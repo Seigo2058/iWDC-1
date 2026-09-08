@@ -1,4 +1,35 @@
 {
   "hello": "Hello",
-  "siteTitle": "Sample Site"
+  "siteTitle": "Sample Site",
+  "capture": {
+    "home": {
+      "takePhoto": "Take Photo"
+    },
+    "capturing": {
+      "heading": "Take a Photo",
+      "openCamera": "Open Camera",
+      "cancel": "Back to Home",
+      "converting": "Processing image...",
+      "errorInvalidFile": "Please select an image file.",
+      "errorHeicConvert": "Failed to convert the image. Please try again."
+    },
+    "cropping": {
+      "heading": "Crop the Photo",
+      "rotateLeft": "Rotate Left",
+      "rotateRight": "Rotate Right",
+      "reset": "Reset",
+      "next": "Next",
+      "retake": "Retake",
+      "errorCrop": "Failed to crop the image. Please try again."
+    },
+    "confirming": {
+      "heading": "Confirm the Photo",
+      "compressing": "Optimizing image...",
+      "decide": "Decide Photo",
+      "redoCrop": "Redo Crop",
+      "retake": "Retake",
+      "errorCompress": "Failed to optimize the image. Using the original instead.",
+      "done": "Photo saved."
+    }
+  }
 }

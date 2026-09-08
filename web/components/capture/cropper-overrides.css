@@ -1,0 +1,77 @@
+/* Cropper.js ships 5x5px resize handles at desktop widths (only the
+   bottom-right corner gets a bigger 20px hit box, and only below md/lg
+   breakpoints) — too small to grab reliably with a finger. Enlarge every
+   handle's touch target uniformly, keeping it centered on the same corner
+   / edge point the original 5px handle was centered on. */
+
+.cropper-point {
+  width: 22px !important;
+  height: 22px !important;
+  opacity: 0.9 !important;
+  background-color: #39f !important;
+  border-radius: 9999px !important;
+}
+
+.cropper-point.point-e {
+  margin-top: -11px !important;
+  right: -11px !important;
+}
+
+.cropper-point.point-n {
+  margin-left: -11px !important;
+  top: -11px !important;
+}
+
+.cropper-point.point-w {
+  margin-top: -11px !important;
+  left: -11px !important;
+}
+
+.cropper-point.point-s {
+  margin-left: -11px !important;
+  bottom: -11px !important;
+}
+
+.cropper-point.point-ne {
+  top: -11px !important;
+  right: -11px !important;
+}
+
+.cropper-point.point-nw {
+  top: -11px !important;
+  left: -11px !important;
+}
+
+.cropper-point.point-sw {
+  bottom: -11px !important;
+  left: -11px !important;
+}
+
+.cropper-point.point-se {
+  bottom: -11px !important;
+  right: -11px !important;
+}
+
+.cropper-point.point-se::before {
+  display: none !important;
+}
+
+.cropper-line.line-e {
+  width: 14px !important;
+  right: -7px !important;
+}
+
+.cropper-line.line-n {
+  height: 14px !important;
+  top: -7px !important;
+}
+
+.cropper-line.line-w {
+  width: 14px !important;
+  left: -7px !important;
+}
+
+.cropper-line.line-s {
+  height: 14px !important;
+  bottom: -7px !important;
+}
