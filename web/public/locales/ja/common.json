@@ -1,4 +1,35 @@
 {
   "hello": "こんにちは",
-  "siteTitle": "サンプルサイト"
+  "siteTitle": "サンプルサイト",
+  "capture": {
+    "home": {
+      "takePhoto": "撮影する"
+    },
+    "capturing": {
+      "heading": "写真を撮影",
+      "openCamera": "カメラを起動",
+      "cancel": "ホームに戻る",
+      "converting": "画像を処理しています...",
+      "errorInvalidFile": "画像ファイルを選択してください。",
+      "errorHeicConvert": "画像の変換に失敗しました。もう一度お試しください。"
+    },
+    "cropping": {
+      "heading": "写真をトリミング",
+      "rotateLeft": "左に回転",
+      "rotateRight": "右に回転",
+      "reset": "リセット",
+      "next": "次へ",
+      "retake": "撮り直す",
+      "errorCrop": "トリミングに失敗しました。もう一度お試しください。"
+    },
+    "confirming": {
+      "heading": "写真を確認",
+      "compressing": "画像を最適化しています...",
+      "decide": "確定する",
+      "redoCrop": "トリミングをやり直す",
+      "retake": "撮り直す",
+      "errorCompress": "画像の最適化に失敗しました。元の画像を使用します。",
+      "done": "写真を保存しました。"
+    }
+  }
 }

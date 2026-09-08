@@ -3,13 +3,14 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "./lib/locales";
 import enCommon from "./public/locales/en/common.json";
 import jaCommon from "./public/locales/ja/common.json";
 import thCommon from "./public/locales/th/common.json";
 
 i18n.use(initReactI18next).init({
-  fallbackLng: "en",
-  supportedLngs: ["en", "ja", "th"],
+  fallbackLng: DEFAULT_LOCALE,
+  supportedLngs: SUPPORTED_LOCALES,
   resources: {
     en: {
       common: enCommon,
@@ -18,7 +19,7 @@ i18n.use(initReactI18next).init({
       common: jaCommon,
     },
     th: {
-      common: jaCommon,
+      common: thCommon,
     },
   },
   ns: ["common"],
