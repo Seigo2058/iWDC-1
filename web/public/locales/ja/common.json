@@ -40,6 +40,7 @@
     "result": {
       "description": "説明",
       "ingredients": "主な材料",
+      "allergens": "アレルギー情報",
       "spicyLevel": "辛さ",
       "spicy": {
         "none": "辛くない",
@@ -54,6 +55,7 @@
       "carbs": "炭水化物",
       "fat": "脂質",
       "howToEat": "食べ方",
+      "referencePhoto": "参考写真",
       "source": "出典",
       "takeAnother": "もう一度撮影する",
       "backHome": "ホームに戻る"

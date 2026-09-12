@@ -17,6 +17,7 @@ export interface FoodData {
   nameJp: string;
   description: LocalizedText;
   ingredients: Record<ApiLang, string[]>;
+  allergens: Record<ApiLang, string[]>;
   spicyLevel: SpicyLevel | null;
   /** Per serving, as an estimate (connect-aisystem.md 3.3). kcal / grams. */
   calories: number | null;
@@ -25,6 +26,9 @@ export interface FoodData {
   fat: number | null;
   howToEat: LocalizedText;
   sourceUrl: string | null;
+  /** Reference photo of the dish from the database, distinct from the
+   *  user's own captured photo. */
+  imageUrl: string | null;
 }
 
 export type AnalyzeFailureReason = "config" | "network" | "timeout" | "server";

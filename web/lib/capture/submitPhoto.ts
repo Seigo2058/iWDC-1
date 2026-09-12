@@ -6,7 +6,8 @@ import type {
   SpicyLevel,
 } from "@/lib/analyze/types";
 
-const API_URL = process.env.NEXT_PUBLIC_ANALYZE_FOOD_API_URL;
+// Same-origin path; next.config.ts rewrites it to the FastAPI backend.
+const ANALYZE_FOOD_PATH = "/api/analyze-food";
 
 // The backend has not shared its analysis latency yet
 // (connect-aisystem.md 5-3); this is the agreed placeholder.
@@ -14,10 +15,6 @@ const TIMEOUT_MS = 30_000;
 
 /** Sends the confirmed photo to the analyze-food API and normalizes the reply. */
 export async function submitPhoto(image: Blob): Promise<AnalyzeResult> {
-  if (!API_URL) {
-    return { outcome: "error", reason: "config" };
-  }
-
   const formData = new FormData();
   formData.append(
     "file",
@@ -26,7 +23,7 @@ export async function submitPhoto(image: Blob): Promise<AnalyzeResult> {
 
   let response: Response;
   try {
-    response = await fetch(API_URL, {
+    response = await fetch(ANALYZE_FOOD_PATH, {
       method: "POST",
       body: formData,
       signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -37,17 +34,23 @@ export async function submitPhoto(image: Blob): Promise<AnalyzeResult> {
     return { outcome: "error", reason: timedOut ? "timeout" : "network" };
   }
 
-  // Documented technical failures (connect-aisystem.md 3.5).
-  if (response.status === 400 || response.status === 422 || response.status >= 500) {
+  // The path only exists through the rewrite, so a 404 means AI_API_ORIGIN is
+  // unset or points somewhere without the analyze-food route.
+  if (response.status === 404) {
+    return { outcome: "error", reason: "config" };
+  }
+
+  // 400 / 422 / 500 are the documented technical failures
+  // (connect-aisystem.md 3.5); a down backend surfaces here too via the proxy.
+  if (!response.ok) {
     return { outcome: "error", reason: "server" };
   }
 
+  // ai/app/routers/food.py answers a recognized dish that has no database row
+  // with 200 + status "partial_success" and data: null. Only a well-formed
+  // "success" counts as a match; every other 200 is read as not found.
   const body: unknown = await response.json().catch(() => null);
   const food = isSuccessBody(body) ? toFoodData(body.data) : null;
-
-  // The backend's dedicated "no match" status code is still unspecified
-  // (connect-aisystem.md 5-2), so anything that is not a well-formed success
-  // is read as not found rather than guessed at.
   return food ? { outcome: "success", food } : { outcome: "notFound" };
 }
 
@@ -73,7 +76,8 @@ function toFoodData(raw: Record<string, unknown>): FoodData | null {
     nameTh: asText(raw.name_th) ?? nameEn,
     nameJp: asText(raw.name_jp) ?? nameEn,
     description: toLocalizedText(raw.description),
-    ingredients: toIngredients(raw.ingredients),
+    ingredients: toLocalizedList(raw.ingredients),
+    allergens: toLocalizedList(raw.allergens),
     spicyLevel: toSpicyLevel(raw.spicy_level),
     calories: asNumber(raw.calories),
     protein: asNumber(raw.protein),
@@ -81,6 +85,7 @@ function toFoodData(raw: Record<string, unknown>): FoodData | null {
     fat: asNumber(raw.fat),
     howToEat: toLocalizedText(raw.how_to_eat),
     sourceUrl: asText(raw.source_url),
+    imageUrl: asText(raw.image_url),
   };
 }
 
@@ -111,8 +116,9 @@ function toStringList(value: unknown): string[] {
 }
 
 /** `ingredients` was first specified as a flat English array and later as a
- *  per-language object (connect-aisystem.md 3.3), so both shapes are accepted. */
-function toIngredients(value: unknown): Record<ApiLang, string[]> {
+ *  per-language object (connect-aisystem.md 3.3), so both shapes are accepted.
+ *  `allergens` follows the same per-language shape. */
+function toLocalizedList(value: unknown): Record<ApiLang, string[]> {
   if (Array.isArray(value)) {
     const shared = toStringList(value);
     return { en: shared, th: shared, jp: shared };

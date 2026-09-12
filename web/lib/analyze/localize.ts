@@ -41,6 +41,17 @@ export function foodName(food: FoodData, lang: Locale): string {
 }
 
 export function foodIngredients(food: FoodData, lang: Locale): string[] {
-  const ingredients = food.ingredients[toApiLang(lang)];
-  return ingredients.length > 0 ? ingredients : food.ingredients.en;
+  return localizedList(food.ingredients, lang);
+}
+
+export function foodAllergens(food: FoodData, lang: Locale): string[] {
+  return localizedList(food.allergens, lang);
+}
+
+function localizedList(
+  list: Record<ApiLang, string[]>,
+  lang: Locale,
+): string[] {
+  const localized = list[toApiLang(lang)];
+  return localized.length > 0 ? localized : list.en;
 }
