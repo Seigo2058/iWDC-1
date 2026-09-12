@@ -1,27 +1,21 @@
-"""FastAPI entry point.
-
-Run with:
-    uvicorn app.main:app --reload
-"""
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.routers import food  # Import the new router file
 
-from app.config import get_settings
-from app.routers import documents, health, search
+app = FastAPI(title="Point & Know AI Backend")
 
-settings = get_settings()
-
-app = FastAPI(title=settings.app_name)
-
+# unlock CORS 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=["http://localhost:3000", "*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(health.router)
-app.include_router(documents.router)
-app.include_router(search.router)
+# Include the router
+app.include_router(food.router, prefix="/api", tags=["Food Analysis"])
+
+@app.get("/")
+async def root():
+    return {"message": "API is running"}
