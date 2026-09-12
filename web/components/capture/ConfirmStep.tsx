@@ -1,24 +1,21 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { useLang } from "@/components/i18n/I18nProvider";
 import { submitPhoto } from "@/lib/capture/submitPhoto";
 import { useT } from "@/lib/i18n/useT";
 import { useObjectUrl } from "@/lib/hooks/useObjectUrl";
 import { useCaptureStore } from "@/lib/store/useCaptureStore";
 
-type Status = "compressing" | "ready" | "submitting" | "done";
+type Status = "compressing" | "ready" | "submitting";
 
 export function ConfirmStep() {
   const t = useT();
-  const lang = useLang();
-  const router = useRouter();
 
   const croppedImage = useCaptureStore((state) => state.croppedImage);
   const finalImage = useCaptureStore((state) => state.finalImage);
   const setFinalImage = useCaptureStore((state) => state.setFinalImage);
+  const setFood = useCaptureStore((state) => state.setFood);
   const goToStep = useCaptureStore((state) => state.goToStep);
   const reset = useCaptureStore((state) => state.reset);
 
@@ -69,17 +66,25 @@ export function ConfirmStep() {
   const handleDecide = async () => {
     const image = finalImage ?? croppedImage;
     if (!image) return;
+
     setStatus("submitting");
-    await submitPhoto(image);
-    setStatus("done");
-    setTimeout(() => {
-      // Don't reset() here: it flips `step` back to "capture" while this
-      // component is still mounted on /capture, which briefly swaps in
-      // CaptureStep and fires its auto-open-camera effect before the
-      // navigation below unmounts it. TakePhotoButton resets state at the
-      // start of the next session instead.
-      router.push(`/${lang}`);
-    }, 1000);
+    setErrorMessage(null);
+    const result = await submitPhoto(image);
+
+    if (result.outcome === "success") {
+      setFood(result.food);
+      return;
+    }
+
+    if (result.outcome === "notFound") {
+      goToStep("notFound");
+      return;
+    }
+
+    // Technical failures keep the user on this screen with the photo intact,
+    // so pressing 確定 again retries.
+    setStatus("ready");
+    setErrorMessage(t(`capture.confirming.error.${result.reason}`));
   };
 
   const handleRedoCrop = () => {
@@ -91,8 +96,7 @@ export function ConfirmStep() {
     goToStep("capture");
   };
 
-  const isBusy =
-    status === "compressing" || status === "submitting" || status === "done";
+  const isBusy = status === "compressing" || status === "submitting";
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4">
@@ -116,9 +120,9 @@ export function ConfirmStep() {
           {t("capture.confirming.compressing")}
         </p>
       )}
-      {status === "done" && (
-        <p className="text-green-600 dark:text-green-400">
-          {t("capture.confirming.done")}
+      {status === "submitting" && (
+        <p className="text-zinc-600 dark:text-zinc-400">
+          {t("capture.confirming.analyzing")}
         </p>
       )}
       {errorMessage && (
@@ -137,7 +141,7 @@ export function ConfirmStep() {
         <button
           type="button"
           onClick={handleRedoCrop}
-          disabled={status === "submitting" || status === "done"}
+          disabled={status === "submitting"}
           className="text-sm text-zinc-600 underline dark:text-zinc-400"
         >
           {t("capture.confirming.redoCrop")}
@@ -145,7 +149,7 @@ export function ConfirmStep() {
         <button
           type="button"
           onClick={handleRetake}
-          disabled={status === "submitting" || status === "done"}
+          disabled={status === "submitting"}
           className="text-sm text-zinc-600 underline dark:text-zinc-400"
         >
           {t("capture.confirming.retake")}
