@@ -25,11 +25,45 @@
     "confirming": {
       "heading": "写真を確認",
       "compressing": "画像を最適化しています...",
+      "analyzing": "料理を解析しています...",
       "decide": "確定する",
       "redoCrop": "トリミングをやり直す",
       "retake": "撮り直す",
       "errorCompress": "画像の最適化に失敗しました。元の画像を使用します。",
-      "done": "写真を保存しました。"
+      "error": {
+        "config": "アプリの設定が正しくありません。管理者にお問い合わせください。",
+        "network": "サーバーに接続できませんでした。通信環境を確認してもう一度お試しください。",
+        "timeout": "解析に時間がかかりすぎました。もう一度お試しください。",
+        "server": "解析に失敗しました。もう一度お試しください。"
+      }
+    },
+    "result": {
+      "description": "説明",
+      "ingredients": "主な材料",
+      "spicyLevel": "辛さ",
+      "spicy": {
+        "none": "辛くない",
+        "low": "少し辛い",
+        "medium": "中辛",
+        "very": "とても辛い"
+      },
+      "nutrition": "栄養情報",
+      "perServing": "一食分の目安です。",
+      "calories": "カロリー",
+      "protein": "タンパク質",
+      "carbs": "炭水化物",
+      "fat": "脂質",
+      "howToEat": "食べ方",
+      "source": "出典",
+      "takeAnother": "もう一度撮影する",
+      "backHome": "ホームに戻る"
+    },
+    "notFound": {
+      "heading": "料理を識別できませんでした",
+      "message": "料理が大きく写るように撮影するか、トリミングをやり直してみてください。",
+      "retake": "もう一度撮影する",
+      "redoCrop": "画像を再編集する",
+      "backHome": "ホームに戻る"
     }
   }
 }

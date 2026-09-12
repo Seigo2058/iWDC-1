@@ -3,6 +3,8 @@
 import { CaptureStep } from "@/components/capture/CaptureStep";
 import { ConfirmStep } from "@/components/capture/ConfirmStep";
 import { CropStep } from "@/components/capture/CropStep";
+import { NotFoundStep } from "@/components/capture/NotFoundStep";
+import { ResultStep } from "@/components/capture/ResultStep";
 import { useCaptureStore } from "@/lib/store/useCaptureStore";
 
 export default function CapturePage() {
@@ -13,6 +15,8 @@ export default function CapturePage() {
       {step === "capture" && <CaptureStep />}
       {step === "crop" && <CropStep />}
       {step === "confirm" && <ConfirmStep />}
+      {step === "result" && <ResultStep />}
+      {step === "notFound" && <NotFoundStep />}
     </div>
   );
 }
