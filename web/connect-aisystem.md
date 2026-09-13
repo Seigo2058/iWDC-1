@@ -1,33 +1,57 @@
 # 料理解析AI連携 要件定義書
 
 **対象プロダクト:** Point & Know（料理解析API）
-**改訂:** バックエンドチームからの回答（旧4章）を反映し、確定した仕様と、まだ残っている未確定事項を分離した。
+**改訂:** `ai/app/routers/food.py`（PR #3）の実装と web 側の接続（`dev/web-ai-integration`）を反映。旧版で「未確定」としていた未検出時のレスポンス・CORSは実装から確定した。
 
 ## 1. 背景・目的
 
-撮影 → トリミング → 確認（`capture-tasks.md` で定義済みのフロー）で確定した写真を、外部の料理解析AI（Point & Know）に送信し、写っている料理をAIに識別させ、名称・説明・材料・栄養情報などを英語・タイ語・日本語で取得してアプリ内に表示する。
+撮影 → トリミング → 確認（`capture-tasks.md` で定義済みのフロー）で確定した写真を料理解析AIに送信し、写っている料理を識別させ、名称・説明・材料・栄養情報などを英語・タイ語・日本語で取得してアプリ内に表示する。
 
-**注意:** このAPIは本リポジトリの `ai/`（FastAPI、OCR/RAG用のバックエンド。`ai/app/routers/documents.py` など）とは**別のバックエンド**である。`ai/app/routers/` 配下には料理解析に該当するルーターは存在しないため、既存の `ai/` バックエンドの改修ではなく、外部で稼働している別サービスとの連携として扱うこと。
+料理解析APIは本リポジトリの `ai/`（FastAPI）に実装されている。
+
+| 項目 | 場所 |
+| --- | --- |
+| エンドポイント実装 | `ai/app/routers/food.py`（`POST /api/analyze-food`） |
+| 料理の識別 | Google Gemini（`GEMINI_API_KEY`） |
+| 料理データ | Supabase の Postgres、テーブル `food_items`（`ai/app/db/models.py`） |
+| 突き合わせ方法 | Gemini が返した英語名で `food_items.name_en` を大文字小文字無視の完全一致で検索する |
 
 ## 2. アプリ内の位置づけ
 
 | 項目 | 内容 |
 | --- | --- |
 | 呼び出しタイミング | `ConfirmStep`（確認画面）で「確定（Decide Photo）」を押したとき |
-| 呼び出し元 | `web/lib/capture/submitPhoto.ts`（現状はローカルで即成功を返すダミー実装。本ドキュメントの内容をもとに実装する） |
+| 呼び出し元 | `web/lib/capture/submitPhoto.ts` |
 | 送信するデータ | `ConfirmStep` で圧縮済みの最終画像（`finalImage`、常にJPEG） |
-| 成功時の結果表示 | 「料理データカード」を表示する画面 — **現状未実装**（別タスク、6章） |
-| 未検出時の結果表示 | エラー画面 — **現状未実装、新規に画面設計が必要**（4章） |
+| 成功時の結果表示 | 料理データカード（`web/components/capture/ResultStep.tsx`） |
+| 未検出時の結果表示 | 未検出画面（`web/components/capture/NotFoundStep.tsx`、4章） |
 
-## 3. 連携API仕様（確定事項）
+### 2.1 接続構成
+
+ブラウザは backend を直接呼ばず、同じオリジンの `/api/analyze-food` を呼ぶ。Next.js が `next.config.ts` の `rewrites` でそのリクエストを backend に中継する。
+
+```
+ブラウザ ──POST /api/analyze-food──▶ Next.js (web, :3000)
+                                        │ rewrites（AI_API_ORIGIN へ転送）
+                                        ▼
+                               FastAPI (ai, :8000) ──▶ Gemini / Supabase
+```
+
+この構成にしている理由:
+- スマートフォン実機から cloudflared トンネル経由で確認するとき、トンネルは web の1本だけでよい（ブラウザから見た `localhost:8000` はスマホ自身を指すため直接は届かない）。
+- HTTPS のページから HTTP の backend を呼ぶ Mixed Content が起きない。
+- 同一オリジンになるので CORS の影響を受けない。
+
+## 3. 連携API仕様
 
 ### 3.1 エンドポイント
 
 | 項目 | 内容 |
 | --- | --- |
 | メソッド | POST |
-| URL | 環境変数から読み込む（例: `NEXT_PUBLIC_ANALYZE_FOOD_API_URL`）。コード中に `http://localhost:8000` をハードコードしない。**本番/検証環境の実際のURL値は未提供のため、別途受領が必要**（5章-1） |
-| 説明 | トリミングした料理の写真を送信し、AIに料理を識別させ、データベースから詳細情報を取得する。**画像のみを対象とし、テキスト（メニュー等）の送信には対応しない**（バックエンドチーム回答済み） |
+| ブラウザから呼ぶURL | `/api/analyze-food`（同一オリジン、固定） |
+| 転送先 | `${AI_API_ORIGIN}/api/analyze-food`。`AI_API_ORIGIN` は `web/.env.local` に設定するサーバー側専用の環境変数（例: `http://localhost:8000`）。ブラウザには公開しない |
+| 説明 | トリミングした料理の写真を送信し、AIに料理を識別させ、データベースから詳細情報を取得する。**画像のみを対象とし、テキスト（メニュー等）の送信には対応しない** |
 
 ### 3.2 リクエスト
 
@@ -36,20 +60,19 @@
 
 | フィールド | 型 | 必須 | 説明 |
 | --- | --- | --- | --- |
-| `file` | File | ○ | トリミング済みの画像ファイル（拡張子は `.jpg` または `.png`。本アプリからは常にJPEGを送信する） |
+| `file` | File | ○ | トリミング済みの画像ファイル。`Content-Type` が `image/` で始まる必要がある。本アプリからは常に `photo.jpg`（`image/jpeg`）を送信する |
 
 ```js
 const formData = new FormData();
-formData.append("file", croppedImageFile);
-const response = await fetch(process.env.NEXT_PUBLIC_ANALYZE_FOOD_API_URL, {
+formData.append("file", new File([image], "photo.jpg", { type: "image/jpeg" }));
+const response = await fetch("/api/analyze-food", {
   method: "POST",
   body: formData,
   // "Content-Type" ヘッダーは手動で追加しない
 });
-const result = await response.json();
 ```
 
-**アップロード可能な画像の制約:** `web/components/capture/ConfirmStep.tsx` の圧縮設定（`browser-image-compression`、`maxWidthOrHeight: 2000` / `maxSizeMB: 2`）を継続する。この制約内であることをバックエンドチームと合意済み。設定を変更する場合は本API側の要件を再確認すること。
+**アップロード可能な画像の制約:** `web/components/capture/ConfirmStep.tsx` の圧縮設定（`browser-image-compression`、`maxWidthOrHeight: 2000` / `maxSizeMB: 2`）を継続する。設定を変更する場合は backend 側の要件を再確認すること。
 
 ### 3.3 レスポンス（識別成功時、ステータス200）
 
@@ -59,122 +82,137 @@ const result = await response.json();
   "detected_name": "Tom Yum Goong",
   "message": "Food found successfully.",
   "data": {
-    "food_id": 1,
+    "food_id": 2,
     "name_en": "Tom Yum Goong",
     "name_th": "ต้มยำกุ้ง",
     "name_jp": "トムヤムクン",
-    "description": {
-      "en": "...",
-      "th": "...",
-      "jp": "..."
-    },
+    "description": { "en": "...", "th": "...", "jp": "..." },
     "ingredients": {
-      "en": ["shrimp", "lemongrass", "chili"],
-      "th": ["...", "...", "..."],
-      "jp": ["...", "...", "..."]
+      "en": ["shrimp", "lemongrass", "..."],
+      "th": ["กุ้ง", "ตะไคร้", "..."],
+      "jp": ["エビ", "レモングラス", "..."]
     },
     "spicy_level": "Very Spicy",
-    "calories": 90,
-    "protein": 10.0,
-    "carbs": 5.0,
-    "fat": 4.0,
-    "how_to_eat": {
-      "en": "...",
-      "th": "...",
-      "jp": "..."
-    },
-    "source_url": "https://..."
+    "calories": 220,
+    "protein": 24,
+    "carbs": 12,
+    "fat": 8,
+    "how_to_eat": { "en": "...", "th": "...", "jp": "..." },
+    "source_url": "https://en.wikipedia.org/wiki/Tom_yum",
+    "image_url": ""
   }
 }
 ```
 
-> `ingredients` は当初「英語のみの配列」と案内されていたが、バックエンドチームの回答により **3言語対応（`description` / `how_to_eat` と同じ `{en, th, jp}` 形式）に変更**された。上記はその前提で書き直した例。実際のキー構造（配列 vs オブジェクト）は実装時にレスポンス実物で確認すること。
-
 | フィールド | 例 | 用途 |
 | --- | --- | --- |
-| `status` | success | リクエストが成功したかどうか |
-| `detected_name` | Tom Yum Goong | AIが識別した料理名。**`data.name_en` と常に同じ値になる**（バックエンドチーム確認済み）。フロントはどちらを使ってもよいが、`data.name_en` を正とする |
+| `status` | success | 識別とDB照合の両方に成功したことを示す |
+| `detected_name` | Tom Yum Goong | Gemini が識別した英語名。成功時は `data.name_en` と一致する（大文字小文字は異なる場合がある）。フロントは `data.name_en` を正とする |
 | `message` | Food found successfully. | レスポンスのステータスメッセージ |
-| `data.food_id` | 1 | データベース上の一意の料理ID |
+| `data.food_id` | 2 | `food_items` 上の一意の料理ID |
 | `data.name_en` / `name_th` / `name_jp` | Tom Yum Goong / ต้มยำกุ้ง / トムヤムクン | 英語・タイ語・日本語の料理名 |
-| `data.description` | en / th / jp | 3言語での料理の説明 |
-| `data.ingredients` | en / th / jp | 主な材料（3言語対応。詳細は上記の注記を参照） |
-| `data.spicy_level` | Very Spicy | 辛さレベル。取りうる値は **`No Spicy` / `Low Spicy` / `Medium Spicy` / `Very Spicy` の4種類に固定**。表示用の3言語ラベルはフロント側で用意する |
-| `data.calories` | 90 | カロリー（kcal）。**「一食分の目安」を表す値**（バックエンドチーム確認済み） |
-| `data.protein` | 10.0 | タンパク質量（g、一食分の目安） |
-| `data.carbs` | 5.0 | 炭水化物量（g、一食分の目安） |
-| `data.fat` | 4.0 | 脂質量（g、一食分の目安） |
-| `data.how_to_eat` | en / th / jp | 3言語での料理の食べ方 |
-| `data.source_url` | https://... | 料理情報の出典URL。**英語のソースのみ**（多言語対応しない、バックエンドチーム確認済み）。常に存在するか・欠落時に`null`になり得るかは未確認（軽微、5章） |
+| `data.description` | `{en, th, jp}` | 3言語での料理の説明 |
+| `data.ingredients` | `{en, th, jp}`（各言語の文字列配列） | 主な材料。旧仕様の英語のみの配列が返ってきても表示できるよう、フロントは両方の形に対応している |
+| `data.spicy_level` | Very Spicy | 辛さレベル。**`No Spicy` / `Low Spicy` / `Medium Spicy` / `Very Spicy` の4種類**。表示用の3言語ラベルはフロント側で用意する |
+| `data.calories` | 220 | カロリー（kcal、一食分の目安）。DBカラム `calories_kcal` を API が変換して返す |
+| `data.protein` | 24 | タンパク質量（g、一食分の目安）。DBカラム `protein_g` |
+| `data.carbs` | 12 | 炭水化物量（g、一食分の目安）。DBカラム `carbohydrate_g` |
+| `data.fat` | 8 | 脂質量（g、一食分の目安）。DBカラム `fat_g` |
+| `data.how_to_eat` | `{en, th, jp}` | 3言語での料理の食べ方 |
+| `data.source_url` | https://... | 料理情報の出典URL（英語のソースのみ） |
+| `data.image_url` | （空文字の場合あり） | 料理の参考画像URL。現状フロントでは使用しない |
 
-### 3.4 レスポンス（識別できなかった／該当なしの場合）
+### 3.4 レスポンス（識別できたがDBに該当が無い場合、ステータス200）
 
-バックエンドチームの回答により、**成功（200）でもエラー（400/422/500）でもない、専用のステータスコードを用意する**方針が決定した。ただし**実際のステータスコード値・レスポンスのJSON構造はまだ提供されていない**（5章-2、実装前に必須で確認）。
+`ai/app/routers/food.py` の実装では、**HTTP 200 のまま `status` を `"partial_success"` にし、`data` を `null` で返す**。
 
-この結果を受けて、フロントエンドには**新規のエラー画面**が必要になる（4章）。
+```json
+{
+  "status": "partial_success",
+  "detected_name": "Pad Krapow",
+  "message": "Food recognized, but details are not in our database yet.",
+  "data": null
+}
+```
 
-### 3.5 エラーハンドリング（技術的エラー）
+> 旧版の要件（旧4章の回答）では「専用のステータスコードを用意する」としていたが、実装は上記の形になっている。**フロントは実装に合わせている**。今後 backend を専用ステータスコードに変更する場合は、`submitPhoto.ts` の判定も合わせて変更すること。
 
-| ステータス | エラー | 意味 |
-| --- | --- | --- |
-| 400 | Bad Request | アップロードされたファイルが画像ではない |
-| 422 | Unprocessable Content | bodyに `file` が含まれていない、またはFormDataではなくJSONで送信された |
-| 500 | Internal Server Error | AI処理の失敗、またはデータベースのエラー |
+Gemini は常に何らかの料理名を返すよう指示されているため、実質的に「識別できない」ケースは無く、未検出はすべてこの「DBに該当が無い」ケースになる。
 
-これらは技術的なリクエスト不備・サーバー側エラー。「識別できなかった」場合（3.4）とは別に扱う。
+### 3.5 エラー
 
-## 4. 新規UI要件: 「識別できなかった場合」の画面
+| ステータス | 発生元 | 意味 | フロントの扱い |
+| --- | --- | --- | --- |
+| 400 | backend | アップロードされたファイルが画像ではない | 解析失敗メッセージ |
+| 422 | backend | body に `file` が含まれていない | 解析失敗メッセージ |
+| 500 | backend | Gemini の処理失敗、またはDBエラー | 解析失敗メッセージ |
+| 500 | Next.js | backend が起動していない／到達できない（中継に失敗） | 解析失敗メッセージ |
+| 404 | Next.js / backend | `AI_API_ORIGIN` が未設定、または転送先に `/api/analyze-food` が無い | 設定エラーメッセージ |
 
-バックエンドチームの回答により、識別できなかった場合はエラーメッセージ画面を新たに用意し、以下のアクションを提示する方針が決まった。
+## 4. 未検出時の画面
 
-- 「ギャラリーに戻る」または「写真を撮る」
-- 「画像を再編集」
+未検出時は `NotFoundStep` を表示し、以下のアクションを提示する（実装済み）。
 
-**確認が必要な点:** 本アプリには現状「ギャラリー」に相当する画面が存在しない（ホーム → 撮影 → トリミング → 確認 のみ）。この文書では暫定的に以下のように読み替えて進める。差異があれば要修正。
-
-| 回答上の表現 | 本アプリでの実装（暫定案） |
+| 要件上の表現 | 本アプリでの実装 |
 | --- | --- |
 | ギャラリーに戻る | ホーム画面（`/[lang]`）に戻る |
 | 写真を撮る | 撮影ステップ（`CaptureStep`）からやり直す |
-| 画像を再編集 | トリミングステップ（`CropStep`）に戻る（`croppedImage` はクリアし、`rawImage` は保持） |
+| 画像を再編集 | トリミングステップ（`CropStep`）に戻る（`rawImage` は保持） |
+
+本アプリには「ギャラリー」に相当する画面が無いため、ホーム画面に読み替えている。
 
 ## 5. 残っている未確定事項
 
-以下はまだバックエンドチームからの回答が無い、または追加の情報提供が必要な項目。
+1. **本番/検証環境の backend のオリジン** — `AI_API_ORIGIN` に設定する値。ローカル開発は `http://localhost:8000`。
+2. **AI解析の処理時間・タイムアウトの目安** — フロント側は暫定で30秒のタイムアウトを設定している。
+3. **未検出時の返し方を仕様どおり専用ステータスコードにするか** — 現状の実装（3.4）のままでよいか、backend と合意しておく。
 
-1. **本番/検証環境の実際のAPIベースURL** — 環境変数で切り替える方針は決定したが（3.1）、実際に設定すべきURLの値がまだ無い。
-2. **識別できなかった場合の実際のステータスコード・レスポンス構造**（3.4）— 「専用のステータスコードを用意する」という方針のみ決定しており、具体的な値・JSON構造が未提供。実装前に必須で確認する。
-3. **AI解析の処理時間・タイムアウトの目安** — バックエンドチーム側で検討中（回答: 「これから考える」）。回答が得られるまでは、フロント側で暫定的に30秒程度のタイムアウトを設定し、後日調整する。
-4. **`source_url` が常に存在するか** — 出典が無いケースで省略される／`null`になるかは未確認（優先度低）。
-5. **CORSの実際の設定値** — `Access-Control-Allow-Origin` が `*` か特定オリジンかは未確認。本アプリはCookie等の認証情報を使わない想定のため、実装後に実際に接続して問題が無ければフロント側の対応は不要と考えてよい。接続できない場合はバックエンド側に確認する。
+## 6. フロントエンド実装方針
 
-## 6. フロントエンド実装方針（決定事項）
-
-- ベースURLは環境変数（例: `NEXT_PUBLIC_ANALYZE_FOOD_API_URL`）から読み込み、コード中にハードコードしない。
-- 送信ファイルは常にJPEG（`ConfirmStep` の圧縮結果）。圧縮設定（`maxWidthOrHeight: 2000` / `maxSizeMB: 2`）は変更しない。
+- ブラウザは同一オリジンの `/api/analyze-food` を呼び、`next.config.ts` の `rewrites` で `AI_API_ORIGIN` に中継する。backend のURLはブラウザに公開しない。
+- `AI_API_ORIGIN` が未設定のとき、Next.js は起動時に警告を出し、中継を登録しない（リクエストは404になる）。
+- 送信ファイルは常にJPEG（`ConfirmStep` の圧縮結果）。圧縮設定は変更しない。
 - `lang`（`"en"` | `"ja"` | `"th"`）→ APIの言語サフィックス（`"en"` | `"jp"` | `"th"`）への変換マップを用意する（本アプリの `ja` を、このAPIとやり取りする箇所に限り `jp` に読み替える。アプリ全体の言語コードやURL構造 `/ja` は変更しない）。
-- `spicy_level`（`No Spicy` / `Low Spicy` / `Medium Spicy` / `Very Spicy`）の3言語表示用ラベルをi18nリソースに追加する。値にスペースを含むため、i18nキーはスラッグ（`none` / `low` / `medium` / `very`）に変換して参照する。
-- レスポンスは「成功」「識別できなかった（3.4、詳細未確定）」「技術的エラー（400/422/500）」「ネットワークエラー（fetch自体の失敗）」の4パターンに分岐してハンドリングする。
-- AI処理中は明示的なローディング表示を行う。タイムアウトは暫定30秒（5章-3の回答後に見直す）。
+- `spicy_level` の4値は値にスペースを含むため、i18nキーはスラッグ（`none` / `low` / `medium` / `very`）に変換して参照する。
+- レスポンスの分岐:
+  - 200 かつ `status: "success"`（`data` が正しい形）→ 料理データカード
+  - 200 かつそれ以外（`partial_success` など）→ 未検出画面
+  - 404 → 設定エラー（確認画面に留まる）
+  - その他の非200 → 解析失敗（確認画面に留まり、確定ボタンで再試行できる）
+  - 通信失敗・タイムアウト → それぞれのエラーメッセージ（確認画面に留まる）
+- AI処理中は「料理を解析しています...」を表示する。
 
-## 7. 未実装のタスク（別タスクとして扱う）
+## 7. ローカルでの起動手順
 
-- `web/lib/capture/submitPhoto.ts` の実装（本ドキュメントのAPIを呼び出す処理に置き換える）
-- 識別成功時の「料理データカード」画面の新規作成
-- 識別できなかった場合のエラー画面の新規作成（4章）
-- 5章の未確定事項についてバックエンド/AIチームから回答を得次第、本ドキュメントを更新する
+### 7.1 backend（`ai/`）
+
+1. `ai/.env`（`.gitignore` 対象）に以下を記入する。
+   - `DATABASE_URL` — Supabase ダッシュボード右上「Connect」→「Session pooler」の URI。先頭の `postgresql://` を `postgresql+asyncpg://` に書き換える（Transaction pooler のポート6543は asyncpg と相性が悪いので使わない）。
+   - `GEMINI_API_KEY` — Google AI Studio で発行したAPIキー。
+2. 起動（`.env` を読み込むため、必ず `ai/` ディレクトリで実行する）。
+
+```bash
+cd ai
+python3 -m venv .venv          # 初回のみ
+.venv/bin/pip install -r requirements.txt   # 初回・依存追加時
+.venv/bin/uvicorn app.main:app --reload --port 8000
+```
+
+`http://localhost:8000/docs` で API ドキュメントが開ければ起動成功。
+
+### 7.2 web（`web/`）
+
+1. `web/.env.local` に `AI_API_ORIGIN=http://localhost:8000` を設定する（`next.config.ts` が起動時に読むので、変更したら dev サーバーを再起動する）。
+2. `npm run dev` で起動する。スマホ実機で確認する場合は web の dev サーバーだけを cloudflared で公開すればよい。
 
 ## 8. フロントエンド連携チェックリスト
 
-- POSTメソッドでエンドポイントを呼び出す
-- `FormData` オブジェクトを作成する
-- フィールド名 `"file"` でトリミング済み画像を append する
-- FormDataをそのまま fetch の body に渡す
+- ブラウザからは同一オリジンの `/api/analyze-food` に POST する
+- `FormData` にフィールド名 `"file"` でトリミング済み画像を append する
 - `"Content-Type"` ヘッダーを手動で設定しない
-- `response.json()` でレスポンスをパースする
-- 返ってきた `data` オブジェクトを使って料理データカードを表示する
-- `spicy_level` の4値（No Spicy/Low Spicy/Medium Spicy/Very Spicy）を3言語ラベルに変換して表示する
+- `status: "success"` のときだけ `data` を料理データカードに表示する
+- `status: "partial_success"`（`data: null`）は未検出画面に遷移する
+- `spicy_level` の4値を3言語ラベルに変換して表示する
 - 栄養情報（calories/protein/carbs/fat）は「一食分の目安」として表示する
-- HTTP 400 / 422 / 500 のエラーを適切に処理する
-- 「識別できなかった」レスポンス（3.4）を技術エラーと区別し、専用のエラー画面に遷移する
-- ベースURLをハードコードせず環境変数から読み込む
+- 404 は設定エラー、その他の非200・通信失敗・タイムアウトは確認画面でエラー表示し再試行できるようにする
+- backend のURLは `AI_API_ORIGIN`（サーバー側）で設定し、コードやブラウザ向けの環境変数に書かない

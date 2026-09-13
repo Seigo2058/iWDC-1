@@ -40,6 +40,7 @@
     "result": {
       "description": "คำอธิบาย",
       "ingredients": "ส่วนประกอบหลัก",
+      "allergens": "สารก่อภูมิแพ้",
       "spicyLevel": "ระดับความเผ็ด",
       "spicy": {
         "none": "ไม่เผ็ด",
@@ -54,6 +55,7 @@
       "carbs": "คาร์โบไฮเดรต",
       "fat": "ไขมัน",
       "howToEat": "วิธีรับประทาน",
+      "referencePhoto": "ภาพอ้างอิง",
       "source": "แหล่งที่มา",
       "takeAnother": "ถ่ายภาพอีกครั้ง",
       "backHome": "กลับหน้าหลัก"

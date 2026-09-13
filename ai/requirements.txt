@@ -3,8 +3,13 @@ uvicorn[standard]
 pydantic
 pydantic-settings
 python-multipart
+python-dotenv
+
+# AI
+google-genai
 
 # DB
 asyncpg
+greenlet
 sqlalchemy
 chromadb

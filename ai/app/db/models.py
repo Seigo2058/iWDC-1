@@ -11,6 +11,9 @@ class FoodItem(Base):
     country = Column(String)
     description = Column(JSON)
     ingredients = Column(JSON)
+    # Per-language list of allergens, same shape as ingredients:
+    # {"en": [...], "th": [...], "jp": [...]}
+    allergens = Column(JSON)
     spicy_level = Column(String)
     calories_kcal = Column(Integer)
     protein_g = Column(Float)

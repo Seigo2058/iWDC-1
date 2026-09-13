@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { useLang } from "@/components/i18n/I18nProvider";
 import {
+  foodAllergens,
   foodIngredients,
   foodName,
   localizedText,
@@ -37,6 +38,7 @@ export function ResultStep() {
   ].filter((item) => item.value !== null);
 
   const ingredients = foodIngredients(food, lang);
+  const allergens = foodAllergens(food, lang);
   const description = localizedText(food.description, lang);
   const howToEat = localizedText(food.howToEat, lang);
 
@@ -70,6 +72,20 @@ export function ResultStep() {
           alt=""
           className="max-h-64 w-full rounded-xl object-contain"
         />
+      )}
+
+      {food.imageUrl && (
+        <section className="flex flex-col gap-1">
+          <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
+            {t("capture.result.referencePhoto")}
+          </h2>
+          {/* eslint-disable-next-line @next/next/no-img-element -- external URL from the database, not a local/static asset */}
+          <img
+            src={food.imageUrl}
+            alt={foodName(food, lang)}
+            className="max-h-64 w-full rounded-xl object-contain"
+          />
+        </section>
       )}
 
       {description && (
@@ -120,6 +136,24 @@ export function ResultStep() {
                 className="rounded-full bg-black/[.05] px-3 py-1 text-sm dark:bg-white/[.08]"
               >
                 {ingredient}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {allergens.length > 0 && (
+        <section className="flex flex-col gap-1">
+          <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
+            {t("capture.result.allergens")}
+          </h2>
+          <ul className="flex flex-wrap gap-2">
+            {allergens.map((allergen) => (
+              <li
+                key={allergen}
+                className="rounded-full bg-amber-100 px-3 py-1 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+              >
+                {allergen}
               </li>
             ))}
           </ul>
