@@ -15,7 +15,9 @@ interface CaptureState {
   rawImage: Blob | null;
   croppedImage: Blob | null;
   finalImage: Blob | null;
-  food: FoodData | null;
+  /** Every dish recognized in the photo; more than one for a menu or a
+   *  shared table. Non-empty whenever step is "result". */
+  foods: FoodData[];
   /** Set when analysis fails after leaving ConfirmStep (e.g. from the
    *  first-time allergy step), so ConfirmStep can surface it once it regains
    *  the "confirm" step. Cleared once read. */
@@ -23,7 +25,7 @@ interface CaptureState {
   setRawImage: (blob: Blob) => void;
   setCroppedImage: (blob: Blob) => void;
   setFinalImage: (blob: Blob) => void;
-  setFood: (food: FoodData) => void;
+  setFoods: (foods: FoodData[]) => void;
   setSubmitErrorReason: (reason: AnalyzeFailureReason | null) => void;
   goToStep: (step: CaptureStep) => void;
   reset: () => void;
@@ -34,7 +36,7 @@ const initialState = {
   rawImage: null,
   croppedImage: null,
   finalImage: null,
-  food: null,
+  foods: [] as FoodData[],
   submitErrorReason: null,
 };
 
@@ -43,7 +45,7 @@ export const useCaptureStore = create<CaptureState>((set) => ({
   setRawImage: (blob) => set({ rawImage: blob, step: "crop" }),
   setCroppedImage: (blob) => set({ croppedImage: blob, step: "confirm" }),
   setFinalImage: (blob) => set({ finalImage: blob }),
-  setFood: (food) => set({ food, step: "result" }),
+  setFoods: (foods) => set({ foods, step: "result" }),
   setSubmitErrorReason: (reason) => set({ submitErrorReason: reason }),
   goToStep: (step) => set({ step }),
   reset: () => set({ ...initialState }),

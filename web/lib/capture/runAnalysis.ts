@@ -9,11 +9,11 @@ import { useCaptureStore } from "@/lib/store/useCaptureStore";
  *  handlers without depending on which one is mounted when it resolves. */
 export async function runAnalysis(image: Blob): Promise<void> {
   const result = await submitPhoto(image);
-  const { setFood, goToStep, setSubmitErrorReason } =
+  const { setFoods, goToStep, setSubmitErrorReason } =
     useCaptureStore.getState();
 
   if (result.outcome === "success") {
-    setFood(result.food);
+    setFoods(result.foods);
     return;
   }
 

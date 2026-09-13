@@ -46,24 +46,32 @@ export async function submitPhoto(image: Blob): Promise<AnalyzeResult> {
     return { outcome: "error", reason: "server" };
   }
 
-  // ai/app/routers/food.py answers a recognized dish that has no database row
-  // with 200 + status "partial_success" and data: null. Only a well-formed
-  // "success" counts as a match; every other 200 is read as not found.
+  // ai/app/routers/food.py can recognize several dishes in one photo (a menu,
+  // a shared table) and returns every one found in the database as `data[]`.
+  // Recognized dishes with no database row come back as "partial_success"
+  // with data: [], and nothing recognized as "fail". Only a "success" with at
+  // least one well-formed dish counts as a match; every other 200 is read as
+  // not found.
   const body: unknown = await response.json().catch(() => null);
-  const food = isSuccessBody(body) ? toFoodData(body.data) : null;
-  return food ? { outcome: "success", food } : { outcome: "notFound" };
+  const foods = isSuccessBody(body) ? toFoodList(body.data) : [];
+  return foods.length > 0
+    ? { outcome: "success", foods }
+    : { outcome: "notFound" };
 }
 
-type SuccessBody = { status: "success"; data: Record<string, unknown> };
+type SuccessBody = { status: "success"; data: unknown[] };
 
 function isSuccessBody(body: unknown): body is SuccessBody {
   if (typeof body !== "object" || body === null) return false;
   const candidate = body as Record<string, unknown>;
-  return (
-    candidate.status === "success" &&
-    typeof candidate.data === "object" &&
-    candidate.data !== null
-  );
+  return candidate.status === "success" && Array.isArray(candidate.data);
+}
+
+function toFoodList(items: unknown[]): FoodData[] {
+  return items.flatMap((item) => {
+    const food = toFoodData(asRecord(item));
+    return food ? [food] : [];
+  });
 }
 
 function toFoodData(raw: Record<string, unknown>): FoodData | null {
