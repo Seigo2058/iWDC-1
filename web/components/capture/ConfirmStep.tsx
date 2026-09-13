@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-import { submitPhoto } from "@/lib/capture/submitPhoto";
+import { runAnalysis } from "@/lib/capture/runAnalysis";
+import { hasStoredAllergySelection } from "@/lib/allergens/storage";
 import { useT } from "@/lib/i18n/useT";
 import { useObjectUrl } from "@/lib/hooks/useObjectUrl";
 import { useCaptureStore } from "@/lib/store/useCaptureStore";
@@ -15,12 +16,26 @@ export function ConfirmStep() {
   const croppedImage = useCaptureStore((state) => state.croppedImage);
   const finalImage = useCaptureStore((state) => state.finalImage);
   const setFinalImage = useCaptureStore((state) => state.setFinalImage);
-  const setFood = useCaptureStore((state) => state.setFood);
+  const submitErrorReason = useCaptureStore((state) => state.submitErrorReason);
+  const setSubmitErrorReason = useCaptureStore(
+    (state) => state.setSubmitErrorReason,
+  );
   const goToStep = useCaptureStore((state) => state.goToStep);
   const reset = useCaptureStore((state) => state.reset);
 
   const [status, setStatus] = useState<Status>("compressing");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [localErrorMessage, setLocalErrorMessage] = useState<string | null>(
+    null,
+  );
+
+  // Analysis that failed after this step handed off to the first-time
+  // allergy step surfaces here, since the user lands back on "confirm";
+  // derived at render time rather than mirrored into local state.
+  const errorMessage =
+    localErrorMessage ??
+    (submitErrorReason
+      ? t(`capture.confirming.error.${submitErrorReason}`)
+      : null);
 
   useEffect(() => {
     if (!croppedImage) return;
@@ -29,7 +44,7 @@ export function ConfirmStep() {
 
     (async () => {
       setStatus("compressing");
-      setErrorMessage(null);
+      setLocalErrorMessage(null);
 
       try {
         const imageCompression = (await import("browser-image-compression"))
@@ -50,7 +65,7 @@ export function ConfirmStep() {
         setStatus("ready");
       } catch {
         if (cancelled) return;
-        setErrorMessage(t("capture.confirming.errorCompress"));
+        setLocalErrorMessage(t("capture.confirming.errorCompress"));
         setFinalImage(croppedImage);
         setStatus("ready");
       }
@@ -67,27 +82,25 @@ export function ConfirmStep() {
     const image = finalImage ?? croppedImage;
     if (!image) return;
 
+    // First-time flow: collect allergies before running AI analysis
+    // (allergy-selection.md 3.1). AllergyStep resumes analysis itself once
+    // the user saves or skips.
+    if (!hasStoredAllergySelection()) {
+      goToStep("allergy");
+      return;
+    }
+
     setStatus("submitting");
-    setErrorMessage(null);
-    const result = await submitPhoto(image);
-
-    if (result.outcome === "success") {
-      setFood(result.food);
-      return;
-    }
-
-    if (result.outcome === "notFound") {
-      goToStep("notFound");
-      return;
-    }
-
-    // Technical failures keep the user on this screen with the photo intact,
-    // so pressing 確定 again retries.
+    setLocalErrorMessage(null);
+    setSubmitErrorReason(null);
+    await runAnalysis(image);
+    // Technical failures land back here via submitErrorReason, read above;
+    // success/notFound already moved the store to another step.
     setStatus("ready");
-    setErrorMessage(t(`capture.confirming.error.${result.reason}`));
   };
 
   const handleRedoCrop = () => {
+    setSubmitErrorReason(null);
     goToStep("crop");
   };
 
