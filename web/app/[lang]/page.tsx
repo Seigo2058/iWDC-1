@@ -1,3 +1,4 @@
+import { AllergySettingsLink } from "@/components/allergies/AllergySettingsLink";
 import { TakePhotoButton } from "@/components/capture/TakePhotoButton";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 
@@ -8,6 +9,7 @@ export default function HomePage() {
         <LanguageSwitcher />
       </div>
       <TakePhotoButton />
+      <AllergySettingsLink />
     </div>
   );
 }

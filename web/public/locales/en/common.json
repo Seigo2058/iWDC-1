@@ -67,5 +67,42 @@
       "redoCrop": "Edit the Photo Again",
       "backHome": "Back to Home"
     }
+  },
+  "allergies": {
+    "heading": "Food Allergies",
+    "description": "Select any food allergies you have. This is saved only on this device.",
+    "save": "Save and Continue",
+    "skip": "Skip",
+    "settingsLink": "Allergy Settings",
+    "categories": {
+      "seafood": "Seafood",
+      "meat": "Meat",
+      "eggDairy": "Eggs & Dairy",
+      "fruit": "Fruits",
+      "nutsLegumes": "Nuts & Legumes",
+      "vegetable": "Vegetables & Mushrooms",
+      "other": "Other"
+    },
+    "items": {
+      "shrimp": "Shrimp",
+      "abalone": "Abalone",
+      "crab": "Crab",
+      "fish": "Fish",
+      "beef": "Beef",
+      "chicken": "Chicken",
+      "egg": "Eggs",
+      "milk": "Milk",
+      "apple": "Apple",
+      "banana": "Banana",
+      "kiwi": "Kiwi",
+      "treeNuts": "Tree Nuts",
+      "peanuts": "Peanuts",
+      "lupine": "Lupine",
+      "soy": "Soy",
+      "celery": "Celery",
+      "mushroom": "Mushroom",
+      "gluten": "Gluten",
+      "gelatin": "Gelatin"
+    }
   }
 }

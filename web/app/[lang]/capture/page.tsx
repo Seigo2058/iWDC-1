@@ -1,5 +1,6 @@
 "use client";
 
+import { AllergyStep } from "@/components/capture/AllergyStep";
 import { CaptureStep } from "@/components/capture/CaptureStep";
 import { ConfirmStep } from "@/components/capture/ConfirmStep";
 import { CropStep } from "@/components/capture/CropStep";
@@ -15,6 +16,7 @@ export default function CapturePage() {
       {step === "capture" && <CaptureStep />}
       {step === "crop" && <CropStep />}
       {step === "confirm" && <ConfirmStep />}
+      {step === "allergy" && <AllergyStep />}
       {step === "result" && <ResultStep />}
       {step === "notFound" && <NotFoundStep />}
     </div>

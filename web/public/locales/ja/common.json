@@ -67,5 +67,42 @@
       "redoCrop": "画像を再編集する",
       "backHome": "ホームに戻る"
     }
+  },
+  "allergies": {
+    "heading": "食物アレルギー",
+    "description": "該当する食物アレルギーを選択してください。この端末にのみ保存されます。",
+    "save": "保存して次へ",
+    "skip": "スキップ",
+    "settingsLink": "アレルギー設定",
+    "categories": {
+      "seafood": "魚介類",
+      "meat": "肉類",
+      "eggDairy": "卵・乳製品",
+      "fruit": "果物",
+      "nutsLegumes": "ナッツ・豆類",
+      "vegetable": "野菜・きのこ",
+      "other": "その他"
+    },
+    "items": {
+      "shrimp": "えび",
+      "abalone": "あわび",
+      "crab": "かに",
+      "fish": "魚類",
+      "beef": "牛肉",
+      "chicken": "鶏肉",
+      "egg": "卵",
+      "milk": "乳",
+      "apple": "りんご",
+      "banana": "バナナ",
+      "kiwi": "キウイ",
+      "treeNuts": "木の実(くるみなど)",
+      "peanuts": "ピーナッツ",
+      "lupine": "ルピナス",
+      "soy": "大豆",
+      "celery": "セロリ",
+      "mushroom": "きのこ",
+      "gluten": "グルテン(小麦など)",
+      "gelatin": "ゼラチン"
+    }
   }
 }
