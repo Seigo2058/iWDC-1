@@ -3,6 +3,7 @@ import json
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import func
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
@@ -25,86 +26,87 @@ async def analyze_food(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_session)
 ):
-    # Ensure the uploaded file is an image
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image.")
 
-    # 1. Read the cropped image sent from Next.js
     print("\n[DEBUG] 1. Reading image file...")
     image_bytes = await file.read()
-    print(f"[DEBUG] 2. File read successfully! File size:: {len(image_bytes) / 1024:.2f} KB")
+    print(f"[DEBUG] 2. File read successfully! Size: {len(image_bytes) / 1024:.2f} KB")
 
-    # 2. Strict Gemini Prompt
-    prompt = (
-            "You are an expert food classifier and menu translator. "
-            "Identify the base dish from the image or text. "
-            "CRITICAL: Ignore specific meats, seafood, or variations. "
-            "For example, if the dish is 'Pad Krapow Crispy Pork' or 'Seafood Pad Krapow', return ONLY 'Pad Krapow'. "
-            "If it is a variation of Tom Yum, return ONLY 'Tom Yum Goong'. "
-            "Return ONLY the standard English base name with no punctuation."
-    )
+    prompt = """
+    You are an expert food classifier and menu translator.
+    Analyze the uploaded image.
+    - If it is a single dish, return a JSON array containing its 1 base English name.
+    - If it is a menu, extract all recognizable food items and return a JSON array of their base English names.
+    CRITICAL: Ignore specific meats, seafood, or variations (e.g., return "Pad Krapow" not "Seafood Pad Krapow").
+    Return ONLY a valid JSON array of strings. Do not include markdown tags like ```json.
+    Example output: ["Pad Krapow", "Tom Yum Goong", "Green Curry"]
+    """
     
     try:
-        print("[DEBUG] 3. Sending the image to Gemini for analysis... (If it gets stuck here, it means Gemini is taking a long time to load.)")
-
-        # Send both the prompt and the image bytes to Gemini 3.6 Flash
+        print("[DEBUG] 3. Sending image to Gemini (Hybrid Mode)...")
         response = await client.aio.models.generate_content(
             model='gemini-3.6-flash',
             contents=[
                 prompt,
                 types.Part.from_bytes(data=image_bytes, mime_type=file.content_type)
             ],
-            config=types.GenerateContentConfig(
-                tools=[]  
-            )
+            config=types.GenerateContentConfig(tools=[])
         )
         
         print("[DEBUG] 4. Gemini has replied!")
-        detected_name_en = response.text.strip()
-        print(f"[DEBUG] 5. The resulting name is...: '{detected_name_en}'")
-
-        print(f"\n=== [DEBUG] Gemini guessed the name of the dish as...: '{detected_name_en}' ===\n")
         
-        # Search the database for the English name (case-insensitive)
-        query = select(FoodItem).where(FoodItem.name_en.ilike(detected_name_en))
-        result = await db.execute(query)
-        food_data = result.scalars().first()
+        clean_text = response.text.replace("```json", "").replace("```", "").strip()
+        detected_names = json.loads(clean_text)
+        print(f"[DEBUG] 5. Detected names from AI: {detected_names}")
 
-        # If Gemini recognizes the food, but we don't have it in the database
-        if not food_data:
+        if not detected_names:
+            return {"status": "fail", "message": "No recognizable food detected."}
+
+        print("[DEBUG] 6. Searching in database...")
+        names_lower = [name.lower() for name in detected_names]
+        query = select(FoodItem).where(func.lower(FoodItem.name_en).in_(names_lower))
+        
+        result = await db.execute(query)
+        food_items = result.scalars().all()
+
+        if not food_items:
             return {
                 "status": "partial_success",
-                "detected_name": detected_name_en,
                 "message": "Food recognized, but details are not in our database yet.",
-                "data": None
+                "detected_names": detected_names,
+                "data": []
             }
         
-        # If everything matches perfectly!
+        food_list_data = []
+        for item in food_items:
+            food_list_data.append({
+                "food_id": item.food_id,          
+                "name_en": item.name_en,
+                "name_th": item.name_th,
+                "name_jp": item.name_jp,          
+                "description": item.description,  
+                "ingredients": item.ingredients,  
+                "spicy_level": item.spicy_level,
+                "calories": item.calories_kcal,    
+                "protein": item.protein_g,        
+                "carbs": item.carbohydrate_g,      
+                "fat": item.fat_g,                
+                "how_to_eat": item.how_to_eat,    
+                "source_url": item.source_url,
+                "image_url": item.image_url
+            })
+
+        print(f"[DEBUG] 7. Successfully matched {len(food_list_data)} items in database!")
+        
         return {
             "status": "success",
-            "detected_name": detected_name_en,
-            "message": "Food found successfully.",
-            "data": {
-                "food_id": food_data.food_id,           
-                "name_en": food_data.name_en,
-                "name_th": food_data.name_th,
-                "name_jp": food_data.name_jp,           
-                "description": food_data.description,   
-                "ingredients": food_data.ingredients,
-                "allergens": food_data.allergens,
-                "spicy_level": food_data.spicy_level,
-                "calories": food_data.calories_kcal,    
-                "protein": food_data.protein_g,         
-                "carbs": food_data.carbohydrate_g,      
-                "fat": food_data.fat_g,                 
-                "how_to_eat": food_data.how_to_eat,     
-                "source_url": food_data.source_url,
-                "image_url": food_data.image_url
-                
-            }
+            "message": f"Found {len(food_list_data)} food item(s).",
+            "data": food_list_data
         }
 
     except Exception as e:
+        print(f"\n[DEBUG ERROR] analyze_food failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"AI Processing Error: {str(e)}")
 
 @router.post("/ingredient-detail")
