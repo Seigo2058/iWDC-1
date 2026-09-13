@@ -25,11 +25,47 @@
     "confirming": {
       "heading": "Confirm the Photo",
       "compressing": "Optimizing image...",
+      "analyzing": "Analyzing the dish...",
       "decide": "Decide Photo",
       "redoCrop": "Redo Crop",
       "retake": "Retake",
       "errorCompress": "Failed to optimize the image. Using the original instead.",
-      "done": "Photo saved."
+      "error": {
+        "config": "The app is not configured correctly. Please contact support.",
+        "network": "Could not reach the server. Check your connection and try again.",
+        "timeout": "The analysis is taking too long. Please try again.",
+        "server": "The analysis failed. Please try again."
+      }
+    },
+    "result": {
+      "description": "Description",
+      "ingredients": "Ingredients",
+      "allergens": "Allergens",
+      "spicyLevel": "Spiciness",
+      "spicy": {
+        "none": "Not spicy",
+        "low": "Mildly spicy",
+        "medium": "Medium spicy",
+        "very": "Very spicy"
+      },
+      "nutrition": "Nutrition",
+      "perServing": "Estimated values per serving.",
+      "calories": "Calories",
+      "protein": "Protein",
+      "carbs": "Carbs",
+      "fat": "Fat",
+      "howToEat": "How to Eat",
+      "referencePhoto": "Reference Photo",
+      "source": "Source",
+      "takeAnother": "Take Another Photo",
+      "backHome": "Back to Home"
+    },
+    "notFound": {
+      "heading": "Could not identify the dish",
+      "message": "Try a photo where the dish fills more of the frame, or crop it again.",
+      "retake": "Take Another Photo",
+      "redoCrop": "Edit the Photo Again",
+      "backHome": "Back to Home"
     }
   }
 }
