@@ -1,12 +1,18 @@
+import os
+import json
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
-import os
+from pydantic import BaseModel
 
 load_dotenv()
+
+class IngredientRequest(BaseModel):
+    ingredient: str
+    language: str
 
 from app.db.postgres import get_session
 from app.db.models import FoodItem
@@ -99,4 +105,42 @@ async def analyze_food(
         }
 
     except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI Processing Error: {str(e)}")
+
+@router.post("/ingredient-detail")
+async def get_ingredient_detail(request: IngredientRequest):
+    try:
+
+        print(f"\n[DEBUG] 1. Received request - Ingredient: '{request.ingredient}', Language: '{request.language}'")
+
+        prompt = f"""
+        You are a food expert. Explain the ingredient: '{request.ingredient}'.
+        Provide the answer strictly in the '{request.language}' language.
+        Respond ONLY in valid JSON format with exactly these two keys:
+        - "what_is_it": A short 1-2 sentence description.
+        - "made_of": A short string listing its raw materials.
+        Do not include markdown tags like ```json.
+        """
+        
+        print("[DEBUG] 2. Sending prompt to Gemini...")
+        ai_response = await client.aio.models.generate_content(
+            model='gemini-3.6-flash',
+            contents=prompt
+        )
+
+        print("[DEBUG] 3. Gemini has replied!")
+        print(f"[DEBUG] Raw AI Output:\n{ai_response.text.strip()}")
+        
+        clean_text = ai_response.text.replace("```json", "").replace("```", "").strip()
+        result_data = json.loads(clean_text)
+
+        print("[DEBUG] 4. Successfully parsed JSON data!")
+        
+        return {
+            "status": "success",
+            "data": result_data
+        }
+
+    except Exception as e:
+        print(f"\n[DEBUG ERROR] get_ingredient_detail failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"AI Processing Error: {str(e)}")
