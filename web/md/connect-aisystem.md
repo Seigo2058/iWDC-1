@@ -23,7 +23,7 @@
 | 呼び出しタイミング | `ConfirmStep`（確認画面）で「確定（Decide Photo）」を押したとき |
 | 呼び出し元 | `web/lib/capture/submitPhoto.ts` |
 | 送信するデータ | `ConfirmStep` で圧縮済みの最終画像（`finalImage`、常にJPEG） |
-| 成功時の結果表示 | 料理データカード（`web/components/capture/ResultStep.tsx`） |
+| 成功時の結果表示 | `web/components/capture/ResultStep.tsx`。1品なら料理データカード（`FoodDetail`）を直接表示し、複数品なら料理一覧（`FoodList`）→タップで料理データカード（3.3.1） |
 | 未検出時の結果表示 | 未検出画面（`web/components/capture/NotFoundStep.tsx`、4章） |
 
 ### 2.1 接続構成
@@ -51,7 +51,7 @@
 | メソッド | POST |
 | ブラウザから呼ぶURL | `/api/analyze-food`（同一オリジン、固定） |
 | 転送先 | `${AI_API_ORIGIN}/api/analyze-food`。`AI_API_ORIGIN` は `web/.env.local` に設定するサーバー側専用の環境変数（例: `http://localhost:8000`）。ブラウザには公開しない |
-| 説明 | トリミングした料理の写真を送信し、AIに料理を識別させ、データベースから詳細情報を取得する。**画像のみを対象とし、テキスト（メニュー等）の送信には対応しない** |
+| 説明 | トリミングした写真を送信し、AIに料理を識別させ、データベースから詳細情報を取得する。1枚の写真に複数の料理が写っている場合（メニュー表や、複数の皿が並んだ食卓）は、識別できたすべての料理を返す。**送信するのは画像のみで、テキストの送信には対応しない** |
 
 ### 3.2 リクエスト
 
@@ -76,39 +76,43 @@ const response = await fetch("/api/analyze-food", {
 
 ### 3.3 レスポンス（識別成功時、ステータス200）
 
+`data` は**料理オブジェクトの配列**で、DBに存在した料理だけが入る（1品の写真なら要素1つ）。Gemini が識別したがDBに無い料理は配列に含まれず、レスポンスにも名前は返らない。配列の順序はDBの検索結果順で、Gemini が識別した順とは限らない。
+
 ```json
 {
   "status": "success",
-  "detected_name": "Tom Yum Goong",
-  "message": "Food found successfully.",
-  "data": {
-    "food_id": 2,
-    "name_en": "Tom Yum Goong",
-    "name_th": "ต้มยำกุ้ง",
-    "name_jp": "トムヤムクン",
-    "description": { "en": "...", "th": "...", "jp": "..." },
-    "ingredients": {
-      "en": ["shrimp", "lemongrass", "..."],
-      "th": ["กุ้ง", "ตะไคร้", "..."],
-      "jp": ["エビ", "レモングラス", "..."]
+  "message": "Found 2 food item(s).",
+  "data": [
+    {
+      "food_id": 2,
+      "name_en": "Tom Yum Goong",
+      "name_th": "ต้มยำกุ้ง",
+      "name_jp": "トムヤムクン",
+      "description": { "en": "...", "th": "...", "jp": "..." },
+      "ingredients": {
+        "en": ["shrimp", "lemongrass", "..."],
+        "th": ["กุ้ง", "ตะไคร้", "..."],
+        "jp": ["エビ", "レモングラス", "..."]
+      },
+      "spicy_level": "Very Spicy",
+      "calories": 220,
+      "protein": 24,
+      "carbs": 12,
+      "fat": 8,
+      "how_to_eat": { "en": "...", "th": "...", "jp": "..." },
+      "source_url": "https://en.wikipedia.org/wiki/Tom_yum",
+      "image_url": ""
     },
-    "spicy_level": "Very Spicy",
-    "calories": 220,
-    "protein": 24,
-    "carbs": 12,
-    "fat": 8,
-    "how_to_eat": { "en": "...", "th": "...", "jp": "..." },
-    "source_url": "https://en.wikipedia.org/wiki/Tom_yum",
-    "image_url": ""
-  }
+    { "food_id": 5, "name_en": "Pad Krapow", "...": "..." }
+  ]
 }
 ```
 
 | フィールド | 例 | 用途 |
 | --- | --- | --- |
-| `status` | success | 識別とDB照合の両方に成功したことを示す |
-| `detected_name` | Tom Yum Goong | Gemini が識別した英語名。成功時は `data.name_en` と一致する（大文字小文字は異なる場合がある）。フロントは `data.name_en` を正とする |
-| `message` | Food found successfully. | レスポンスのステータスメッセージ |
+| `status` | success | 識別とDB照合の両方に成功し、`data` に1品以上あることを示す |
+| `message` | Found 2 food item(s). | レスポンスのステータスメッセージ |
+| `data[]` | 料理オブジェクトの配列 | 以下 `data.*` は各要素のフィールド |
 | `data.food_id` | 2 | `food_items` 上の一意の料理ID |
 | `data.name_en` / `name_th` / `name_jp` | Tom Yum Goong / ต้มยำกุ้ง / トムヤムクン | 英語・タイ語・日本語の料理名 |
 | `data.description` | `{en, th, jp}` | 3言語での料理の説明 |
@@ -120,24 +124,42 @@ const response = await fetch("/api/analyze-food", {
 | `data.fat` | 8 | 脂質量（g、一食分の目安）。DBカラム `fat_g` |
 | `data.how_to_eat` | `{en, th, jp}` | 3言語での料理の食べ方 |
 | `data.source_url` | https://... | 料理情報の出典URL（英語のソースのみ） |
-| `data.image_url` | （空文字の場合あり） | 料理の参考画像URL。現状フロントでは使用しない |
+| `data.image_url` | （空文字の場合あり） | 料理の参考画像URL。料理データカードの「参考写真」と、料理一覧のサムネイルに使う |
+
+> 旧仕様の `detected_name`（識別した英語名1つ）と、`data` が単一オブジェクトだった形は廃止された。フロントは配列の形のみに対応している。
+
+#### 3.3.1 複数品の表示（フロント）
+
+| `data` の件数 | 表示 |
+| --- | --- |
+| 1品 | これまでどおり料理データカードを直接表示する（ユーザーが撮った写真も表示） |
+| 2品以上 | 「N品の料理が見つかりました」の一覧を表示する。各行は参考写真のサムネイル・料理名・説明（2行まで）・辛さ。タップするとその料理の料理データカードを表示し、「一覧に戻る」で一覧に戻る（一覧のスクロール位置は保持）。ユーザーの写真は複数の料理を写したものなので、一覧にだけ表示し、個別の料理データカードには表示しない |
 
 ### 3.4 レスポンス（識別できたがDBに該当が無い場合、ステータス200）
 
-`ai/app/routers/food.py` の実装では、**HTTP 200 のまま `status` を `"partial_success"` にし、`data` を `null` で返す**。
+`ai/app/routers/food.py` の実装では、**HTTP 200 のまま `status` を `"partial_success"` にし、`data` を空配列で返す**。識別した英語名は `detected_names` に入る。
 
 ```json
 {
   "status": "partial_success",
-  "detected_name": "Pad Krapow",
   "message": "Food recognized, but details are not in our database yet.",
-  "data": null
+  "detected_names": ["Pad Krapow"],
+  "data": []
 }
 ```
 
 > 旧版の要件（旧4章の回答）では「専用のステータスコードを用意する」としていたが、実装は上記の形になっている。**フロントは実装に合わせている**。今後 backend を専用ステータスコードに変更する場合は、`submitPhoto.ts` の判定も合わせて変更すること。
 
-Gemini は常に何らかの料理名を返すよう指示されているため、実質的に「識別できない」ケースは無く、未検出はすべてこの「DBに該当が無い」ケースになる。
+### 3.4.1 レスポンス（料理を1品も識別できなかった場合、ステータス200）
+
+Gemini が空配列を返した場合は `data` を含まずに返す。フロントは 3.4 と同じく未検出画面に遷移する。
+
+```json
+{
+  "status": "fail",
+  "message": "No recognizable food detected."
+}
+```
 
 ### 3.5 エラー
 
@@ -175,8 +197,8 @@ Gemini は常に何らかの料理名を返すよう指示されているため�
 - `lang`（`"en"` | `"ja"` | `"th"`）→ APIの言語サフィックス（`"en"` | `"jp"` | `"th"`）への変換マップを用意する（本アプリの `ja` を、このAPIとやり取りする箇所に限り `jp` に読み替える。アプリ全体の言語コードやURL構造 `/ja` は変更しない）。
 - `spicy_level` の4値は値にスペースを含むため、i18nキーはスラッグ（`none` / `low` / `medium` / `very`）に変換して参照する。
 - レスポンスの分岐:
-  - 200 かつ `status: "success"`（`data` が正しい形）→ 料理データカード
-  - 200 かつそれ以外（`partial_success` など）→ 未検出画面
+  - 200 かつ `status: "success"`（`data` が配列で、正しい形の料理が1品以上）→ 1品なら料理データカード、複数品なら料理一覧（3.3.1）。形の崩れた要素は捨て、残りだけ表示する
+  - 200 かつそれ以外（`partial_success` / `fail` など）→ 未検出画面
   - 404 → 設定エラー（確認画面に留まる）
   - その他の非200 → 解析失敗（確認画面に留まり、確定ボタンで再試行できる）
   - 通信失敗・タイムアウト → それぞれのエラーメッセージ（確認画面に留まる）
@@ -210,8 +232,8 @@ python3 -m venv .venv          # 初回のみ
 - ブラウザからは同一オリジンの `/api/analyze-food` に POST する
 - `FormData` にフィールド名 `"file"` でトリミング済み画像を append する
 - `"Content-Type"` ヘッダーを手動で設定しない
-- `status: "success"` のときだけ `data` を料理データカードに表示する
-- `status: "partial_success"`（`data: null`）は未検出画面に遷移する
+- `status: "success"` のときだけ `data`（配列）を表示する。1品なら料理データカード、複数品なら料理一覧
+- `status: "partial_success"`（`data: []`）と `status: "fail"` は未検出画面に遷移する
 - `spicy_level` の4値を3言語ラベルに変換して表示する
 - 栄養情報（calories/protein/carbs/fat）は「一食分の目安」として表示する
 - 404 は設定エラー、その他の非200・通信失敗・タイムアウトは確認画面でエラー表示し再試行できるようにする

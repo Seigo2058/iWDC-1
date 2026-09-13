@@ -34,6 +34,6 @@ export interface FoodData {
 export type AnalyzeFailureReason = "config" | "network" | "timeout" | "server";
 
 export type AnalyzeResult =
-  | { outcome: "success"; food: FoodData }
+  | { outcome: "success"; foods: FoodData[] }
   | { outcome: "notFound" }
   | { outcome: "error"; reason: AnalyzeFailureReason };
