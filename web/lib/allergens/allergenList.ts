@@ -28,7 +28,7 @@ export interface AllergenItem {
 
 export const ALLERGEN_ITEMS: readonly AllergenItem[] = [
   { id: "shrimp", category: "seafood" },
-  { id: "abalone", category: "seafood" },
+  { id: "shellfish", category: "seafood" },
   { id: "crab", category: "seafood" },
   { id: "fish", category: "seafood" },
   { id: "beef", category: "meat" },

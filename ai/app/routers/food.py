@@ -1,10 +1,8 @@
-import os
 import json
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import func
-from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 from pydantic import BaseModel
@@ -17,9 +15,14 @@ class IngredientRequest(BaseModel):
 
 from app.db.postgres import get_session
 from app.db.models import FoodItem
+from app.services import gemini
 
 router = APIRouter()
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+def gemini_unavailable_http_error(error: gemini.GeminiUnavailableError) -> HTTPException:
+    if error.quota_exhausted:
+        return HTTPException(status_code=429, detail="AI request limit reached for all models. Please try again later.")
+    return HTTPException(status_code=503, detail="AI models are busy right now. Please try again later.")
 
 @router.post("/analyze-food")
 async def analyze_food(
@@ -45,8 +48,7 @@ async def analyze_food(
     
     try:
         print("[DEBUG] 3. Sending image to Gemini (Hybrid Mode)...")
-        response = await client.aio.models.generate_content(
-            model='gemini-3.6-flash',
+        response = await gemini.generate_content(
             contents=[
                 prompt,
                 types.Part.from_bytes(data=image_bytes, mime_type=file.content_type)
@@ -105,6 +107,9 @@ async def analyze_food(
             "data": food_list_data
         }
 
+    except gemini.GeminiUnavailableError as e:
+        print(f"\n[DEBUG ERROR] analyze_food failed: {str(e)}")
+        raise gemini_unavailable_http_error(e)
     except Exception as e:
         print(f"\n[DEBUG ERROR] analyze_food failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"AI Processing Error: {str(e)}")
@@ -125,10 +130,7 @@ async def get_ingredient_detail(request: IngredientRequest):
         """
         
         print("[DEBUG] 2. Sending prompt to Gemini...")
-        ai_response = await client.aio.models.generate_content(
-            model='gemini-3.6-flash',
-            contents=prompt
-        )
+        ai_response = await gemini.generate_content(contents=prompt)
 
         print("[DEBUG] 3. Gemini has replied!")
         print(f"[DEBUG] Raw AI Output:\n{ai_response.text.strip()}")
@@ -143,6 +145,9 @@ async def get_ingredient_detail(request: IngredientRequest):
             "data": result_data
         }
 
+    except gemini.GeminiUnavailableError as e:
+        print(f"\n[DEBUG ERROR] get_ingredient_detail failed: {str(e)}")
+        raise gemini_unavailable_http_error(e)
     except Exception as e:
         print(f"\n[DEBUG ERROR] get_ingredient_detail failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"AI Processing Error: {str(e)}")
