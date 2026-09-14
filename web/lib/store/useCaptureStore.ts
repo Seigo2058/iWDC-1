@@ -18,6 +18,9 @@ interface CaptureState {
   /** Every dish recognized in the photo; more than one for a menu or a
    *  shared table. Non-empty whenever step is "result". */
   foods: FoodData[];
+  /** When the analysis succeeded (ISO 8601). Recent Scan records this, not the
+   *  time a dish is opened from a multi-dish list (recent-scans.md 3.1). */
+  scannedAt: string | null;
   /** Set when analysis fails after leaving ConfirmStep (e.g. from the
    *  first-time allergy step), so ConfirmStep can surface it once it regains
    *  the "confirm" step. Cleared once read. */
@@ -37,6 +40,7 @@ const initialState = {
   croppedImage: null,
   finalImage: null,
   foods: [] as FoodData[],
+  scannedAt: null,
   submitErrorReason: null,
 };
 
@@ -45,7 +49,8 @@ export const useCaptureStore = create<CaptureState>((set) => ({
   setRawImage: (blob) => set({ rawImage: blob, step: "crop" }),
   setCroppedImage: (blob) => set({ croppedImage: blob, step: "confirm" }),
   setFinalImage: (blob) => set({ finalImage: blob }),
-  setFoods: (foods) => set({ foods, step: "result" }),
+  setFoods: (foods) =>
+    set({ foods, scannedAt: new Date().toISOString(), step: "result" }),
   setSubmitErrorReason: (reason) => set({ submitErrorReason: reason }),
   goToStep: (step) => set({ step }),
   reset: () => set({ ...initialState }),

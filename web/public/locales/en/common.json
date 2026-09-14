@@ -123,5 +123,25 @@
       "gluten": "Gluten",
       "gelatin": "Gelatin"
     }
+  },
+  "recentScans": {
+    "heading": "Recent Scan",
+    "empty": "No Recent Scan",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "daysAgo_one": "{{count}} day ago",
+    "daysAgo_other": "{{count}} days ago"
+  },
+  "foodPage": {
+    "loading": "Loading dish information...",
+    "backHome": "Back to Home",
+    "retry": "Try Again",
+    "error": {
+      "notFound": "We couldn't find this dish.",
+      "network": "Could not reach the server. Check your connection and try again.",
+      "timeout": "Loading took too long. Please try again.",
+      "config": "The app is not configured correctly. Please contact support.",
+      "server": "Could not load the dish information. Please try again."
+    }
   }
 }

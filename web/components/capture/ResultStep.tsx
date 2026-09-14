@@ -8,6 +8,7 @@ import { FoodList } from "@/components/capture/FoodList";
 import { useLang } from "@/components/i18n/I18nProvider";
 import { useT } from "@/lib/i18n/useT";
 import { useObjectUrl } from "@/lib/hooks/useObjectUrl";
+import { saveRecentScan } from "@/lib/recentScans/storage";
 import { useCaptureStore } from "@/lib/store/useCaptureStore";
 
 /** One dish goes straight to its detail card; several (a menu, a shared
@@ -18,6 +19,7 @@ export function ResultStep() {
   const router = useRouter();
 
   const foods = useCaptureStore((state) => state.foods);
+  const scannedAt = useCaptureStore((state) => state.scannedAt);
   const finalImage = useCaptureStore((state) => state.finalImage);
   const croppedImage = useCaptureStore((state) => state.croppedImage);
   const goToStep = useCaptureStore((state) => state.goToStep);
@@ -40,6 +42,9 @@ export function ResultStep() {
   const handleSelect = (index: number) => {
     listScrollY.current = window.scrollY;
     setSelectedIndex(index);
+    // Only the dishes opened from a list go into Recent Scan
+    // (recent-scans.md 3.1); a single dish was saved in runAnalysis.
+    if (scannedAt) saveRecentScan(foods[index], scannedAt);
   };
 
   const handleTakeAnother = () => {

@@ -1,4 +1,5 @@
 import { submitPhoto } from "@/lib/capture/submitPhoto";
+import { saveRecentScan } from "@/lib/recentScans/storage";
 import { useCaptureStore } from "@/lib/store/useCaptureStore";
 
 /** Submits the confirmed photo and drives the capture store to the matching
@@ -14,6 +15,13 @@ export async function runAnalysis(image: Blob): Promise<void> {
 
   if (result.outcome === "success") {
     setFoods(result.foods);
+    // A single dish opens straight into its detail card, which counts as
+    // opening it; a multi-dish list only records the dishes the user opens
+    // (ResultStep), not every dish found (recent-scans.md 3.1).
+    const { scannedAt } = useCaptureStore.getState();
+    if (result.foods.length === 1 && scannedAt) {
+      saveRecentScan(result.foods[0], scannedAt);
+    }
     return;
   }
 
