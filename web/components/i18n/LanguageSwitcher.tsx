@@ -1,9 +1,16 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 import { useLang } from "@/components/i18n/I18nProvider";
 import { SUPPORTED_LOCALES, type Locale } from "@/lib/locales";
+
+/** Same page in another language: only the leading `/[lang]` segment of
+ *  the path changes (e.g. /ja/foods/5 -> /th/foods/5). */
+function pathInLocale(pathname: string, locale: Locale): string {
+  const rest = pathname.split("/").slice(2).join("/");
+  return rest ? `/${locale}/${rest}` : `/${locale}`;
+}
 
 // Each language's own name in its own script, not translated — the point of
 // a language switcher is that a reader who can't read the current locale
@@ -16,7 +23,7 @@ const LANGUAGE_LABELS: Record<Locale, string> = {
 
 export function LanguageSwitcher() {
   const lang = useLang();
-  const router = useRouter();
+  const pathname = usePathname();
 
   return (
     <div
@@ -32,7 +39,14 @@ export function LanguageSwitcher() {
             type="button"
             aria-current={isActive ? "true" : undefined}
             onClick={() => {
-              if (!isActive) router.push(`/${locale}`);
+              // Rewriting the URL in place (instead of navigating) keeps the
+              // current screen mounted, so in-progress state such as unsaved
+              // checkboxes or the capture flow survives; I18nProvider reads
+              // the new language from the path. Replace rather than push, so
+              // Back leaves the page instead of stepping through languages.
+              if (!isActive) {
+                window.history.replaceState(null, "", pathInLocale(pathname, locale));
+              }
             }}
             className={
               isActive
