@@ -2,8 +2,12 @@ import { create } from "zustand";
 
 import type { AnalyzeFailureReason, FoodData } from "@/lib/analyze/types";
 
+/** capture -> review (use this photo?) -> crop -> confirm (the cropped
+ *  image, where analysis runs) -> result / notFound, with the first-time
+ *  allergy step between confirm and the analysis. */
 export type CaptureStep =
   | "capture"
+  | "review"
   | "crop"
   | "confirm"
   | "allergy"
@@ -25,12 +29,17 @@ interface CaptureState {
    *  first-time allergy step), so ConfirmStep can surface it once it regains
    *  the "confirm" step. Cleared once read. */
   submitErrorReason: AnalyzeFailureReason | null;
+  /** While runAnalysis is waiting on the API, so ConfirmStep shows the
+   *  progress wherever the analysis was started from (itself, or the
+   *  first-time allergy step, which hands back to it). */
+  analyzing: boolean;
   setRawImage: (blob: Blob) => void;
   setCroppedImage: (blob: Blob) => void;
   setFinalImage: (blob: Blob) => void;
   setFoods: (foods: FoodData[]) => void;
   setSubmitErrorReason: (reason: AnalyzeFailureReason | null) => void;
   goToStep: (step: CaptureStep) => void;
+  setAnalyzing: (analyzing: boolean) => void;
   reset: () => void;
 }
 
@@ -42,16 +51,20 @@ const initialState = {
   foods: [] as FoodData[],
   scannedAt: null,
   submitErrorReason: null,
+  analyzing: false,
 };
 
 export const useCaptureStore = create<CaptureState>((set) => ({
   ...initialState,
-  setRawImage: (blob) => set({ rawImage: blob, step: "crop" }),
-  setCroppedImage: (blob) => set({ croppedImage: blob, step: "confirm" }),
+  setRawImage: (blob) => set({ rawImage: blob, step: "review" }),
+  // A new crop invalidates the previous one's compressed copy.
+  setCroppedImage: (blob) =>
+    set({ croppedImage: blob, finalImage: null, step: "confirm" }),
   setFinalImage: (blob) => set({ finalImage: blob }),
   setFoods: (foods) =>
     set({ foods, scannedAt: new Date().toISOString(), step: "result" }),
   setSubmitErrorReason: (reason) => set({ submitErrorReason: reason }),
   goToStep: (step) => set({ step }),
+  setAnalyzing: (analyzing) => set({ analyzing }),
   reset: () => set({ ...initialState }),
 }));

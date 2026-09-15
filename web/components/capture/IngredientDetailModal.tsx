@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { useLang } from "@/components/i18n/I18nProvider";
+import { ProgressText } from "@/components/ui/ProgressText";
 import { useT } from "@/lib/i18n/useT";
 import {
   fetchIngredientDetail,
@@ -126,7 +127,7 @@ export function IngredientDetailModal({
               <div className="h-4 w-5/6 animate-pulse rounded bg-black/[.08] dark:bg-white/[.12]" />
               <div className="h-4 w-2/3 animate-pulse rounded bg-black/[.08] dark:bg-white/[.12]" />
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                {t("capture.ingredient.loading")}
+                <ProgressText text={t("capture.ingredient.loading")} />
               </p>
             </div>
           )}

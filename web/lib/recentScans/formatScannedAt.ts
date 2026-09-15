@@ -35,7 +35,7 @@ function calendarDaysBetween(earlier: Date, later: Date): number {
   return Math.round((end.getTime() - start.getTime()) / DAY_MS);
 }
 
-/** e.g. "今日 午前09:05", "3 days ago 12:30 PM", "เมื่อวาน 21:45 น." */
+/** e.g. "今日 午前09:05", "3 days ago, 12:30 PM", "เมื่อวาน 21:45 น." */
 export function formatScannedAt(
   scannedAt: string,
   lang: Locale,
@@ -54,5 +54,8 @@ export function formatScannedAt(
         : t("recentScans.daysAgo", { count: days });
 
   const time = TIME_FORMATS[lang].format(date);
+  // English separates the day and time with a comma ("Today, 9:30 AM",
+  // Figma: Home).
+  if (lang === "en") return `${day}, ${time}`;
   return `${day} ${lang === "th" ? `${time} น.` : time}`;
 }

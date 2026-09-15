@@ -9,19 +9,19 @@ import { useCaptureStore } from "@/lib/store/useCaptureStore";
  *  than via a hook) so it can be called from either component's event
  *  handlers without depending on which one is mounted when it resolves. */
 export async function runAnalysis(image: Blob): Promise<void> {
+  const { setAnalyzing, setSubmitErrorReason } = useCaptureStore.getState();
+  setAnalyzing(true);
+  setSubmitErrorReason(null);
   const result = await submitPhoto(image);
-  const { setFoods, goToStep, setSubmitErrorReason } =
-    useCaptureStore.getState();
+  setAnalyzing(false);
+  const { setFoods, goToStep } = useCaptureStore.getState();
 
   if (result.outcome === "success") {
     setFoods(result.foods);
-    // A single dish opens straight into its detail card, which counts as
-    // opening it; a multi-dish list only records the dishes the user opens
-    // (ResultStep), not every dish found (recent-scans.md 3.1).
+    // Every dish the scan found is recorded together, as one history entry
+    // (recent-scans.md 3.1).
     const { scannedAt } = useCaptureStore.getState();
-    if (result.foods.length === 1 && scannedAt) {
-      saveRecentScan(result.foods[0], scannedAt);
-    }
+    if (scannedAt) saveRecentScan(result.foods, scannedAt);
     return;
   }
 

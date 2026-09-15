@@ -1,81 +1,78 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
+import Image from "next/image";
 
+import { DishPhoto } from "@/components/home/DishPhoto";
 import { useLang } from "@/components/i18n/I18nProvider";
-import { SpicyBadge } from "@/components/capture/SpicyBadge";
+import { FixedBottomBar } from "@/components/ui/FixedBottomBar";
 import { foodName, localizedText } from "@/lib/analyze/localize";
 import type { FoodData } from "@/lib/analyze/types";
 import { useT } from "@/lib/i18n/useT";
 
 interface FoodListProps {
   foods: FoodData[];
-  capturedPhotoUrl: string | null;
   onSelect: (index: number) => void;
+  onBack: () => void;
 }
 
-export function FoodList({ foods, capturedPhotoUrl, onSelect }: FoodListProps) {
+/** Dishes found in one photo (Figma: phone "Information" / PC "MacBook Pro
+ *  16' - 10"): a title with the count over photo + name + description cards
+ *  (one column on phones, two on PC), each opening that dish's detail, and
+ *  Back fixed at the bottom. */
+export function FoodList({ foods, onSelect, onBack }: FoodListProps) {
   const t = useT();
   const lang = useLang();
 
   return (
-    <>
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">
-          {t("capture.result.foundCount", { count: foods.length })}
-        </h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          {t("capture.result.selectDish")}
-        </p>
-      </header>
+    // Bottom padding keeps the last cards clear of the fixed Back button.
+    <div className="flex flex-1 flex-col bg-[#f0f0f0] px-gutter pb-[140px] pt-10 font-brand md:pb-[200px] md:pt-[46px]">
+      <h1 className="text-xl leading-[31.2px] font-medium text-[#422f11] md:text-[26px]">
+        {t("capture.result.detectedFoods", { count: foods.length })}
+      </h1>
+      <p className="leading-[25.6px] text-[#564334] md:mt-1.5 md:text-xl">
+        {t("capture.result.checkDishes")}
+      </p>
 
-      {capturedPhotoUrl && (
-        // eslint-disable-next-line @next/next/no-img-element -- a client-side Blob object URL
-        <img
-          src={capturedPhotoUrl}
-          alt=""
-          className="max-h-48 w-full rounded-xl object-contain"
-        />
-      )}
-
-      <ul className="flex flex-col gap-2">
+      <ul className="mt-[11px] grid gap-3 md:mt-[42px] md:grid-cols-2 md:gap-x-9 md:gap-y-[41px]">
         {foods.map((food, index) => {
-          const name = foodName(food, lang);
           const description = localizedText(food.description, lang);
           return (
             <li key={`${food.foodId ?? food.nameEn}-${index}`}>
               <button
                 type="button"
                 onClick={() => onSelect(index)}
-                className="flex w-full items-center gap-3 rounded-xl border border-black/[.08] p-3 text-left transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                className="flex w-full items-center gap-[19px] rounded-3xl border border-[rgba(86,67,52,0.16)] bg-white p-[11px] pr-[29px] text-left transition-colors hover:bg-[#fafafa] md:gap-[30px] md:rounded-[32px] md:border-0 md:py-[25.5px] md:pl-[26px] md:pr-8 md:shadow-[0_0_16px_rgba(0,0,0,0.24)]"
               >
-                {food.imageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element -- external URL from the database, not a local/static asset
-                  <img
-                    src={food.imageUrl}
-                    alt=""
-                    className="size-16 shrink-0 rounded-lg object-cover"
-                  />
-                )}
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <span className="font-semibold">{name}</span>
+                <DishPhoto
+                  src={food.imageUrl}
+                  className="h-[129px] w-[135px] shrink-0 rounded-xl md:h-[226px] md:w-[237px]"
+                />
+                <span className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="text-xl font-medium break-words text-[#422f11] md:text-[22px]">
+                    {foodName(food, lang)}
+                  </span>
                   {description && (
-                    <span className="line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">
+                    <span className="line-clamp-4 text-xs leading-[1.3] tracking-[-0.24px] text-[#6a6a6a] md:max-w-[363px] md:text-base md:tracking-[-0.32px]">
                       {description}
                     </span>
                   )}
-                  {food.spicyLevel && <SpicyBadge level={food.spicyLevel} />}
-                </div>
-                <ChevronRight
-                  aria-hidden="true"
-                  size={20}
-                  className="shrink-0 text-zinc-400"
-                />
+                </span>
               </button>
             </li>
           );
         })}
       </ul>
-    </>
+
+      <FixedBottomBar className="pb-6 pt-11 md:pb-[54px] md:pt-[108px]">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex h-[78px] w-[221px] items-center justify-center gap-2 rounded-full bg-[#b5b5b5] px-[30px] text-xl font-bold tracking-[-0.4px] text-white transition-opacity hover:opacity-85"
+        >
+          <Image src="/images/icons/chevron-left.svg" alt="" width={24} height={24} className="size-6" />
+          {t("capture.result.back")}
+        </button>
+      </FixedBottomBar>
+    </div>
   );
 }

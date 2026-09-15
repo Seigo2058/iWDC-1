@@ -1,59 +1,168 @@
+/* Cropper.js restyled after the Figma crop screens ("Cropped Screen"): the
+   photo dimmed, the selection a white wash with orange L-shaped corners —
+   on phones with a thin white border, on PC bigger corners and no border
+   (see the end of this file). The selection's corners are rounded like the
+   frame's (CropStep's frameClassName: 32px on phones, 40px on PC), and the
+   wash inside them concentrically. */
+
+/* Lets the corners size themselves to the selection (cq units). */
+.cropper-crop-box {
+  container-type: size;
+}
+
+/* Outside the selection: the photo dimmed as by the design's 40% black
+   overlay (and on PC slightly blurred). Applied to the photo itself rather
+   than through the stock full-container modal, so the empty frame around a
+   photo that doesn't fill it keeps the frame's own color. */
+.cropper-modal {
+  opacity: 0 !important;
+}
+
+.cropper-canvas img {
+  filter: brightness(0.6);
+}
+
+@media (width >= 48rem) {
+  .cropper-canvas img {
+    filter: brightness(0.6) blur(6px);
+  }
+}
+
+/* Inside the selection the design keeps the same dimming as outside and
+   lays the white wash over it, leaving a thin band of dimmed photo between
+   the border and the wash. */
+.cropper-view-box {
+  outline: 1.1px solid rgb(255 255 255 / 0.5) !important;
+  /* Inside the box, for the same reason as the brackets below. */
+  outline-offset: -1.1px;
+  border-radius: 32px;
+}
+
+.cropper-view-box img {
+  filter: brightness(0.6);
+}
+
+.cropper-face {
+  top: 5.5px !important;
+  left: 5.5px !important;
+  width: calc(100% - 11px) !important;
+  height: calc(100% - 11px) !important;
+  background-color: #fff !important;
+  opacity: 0.4 !important;
+  border-radius: 26.5px;
+}
+
 /* Cropper.js ships 5x5px resize handles at desktop widths (only the
    bottom-right corner gets a bigger 20px hit box, and only below md/lg
-   breakpoints) — too small to grab reliably with a finger. Enlarge every
-   handle's touch target uniformly, keeping it centered on the same corner
-   / edge point the original 5px handle was centered on. */
+   breakpoints) — too small to grab reliably with a finger. Every handle
+   gets the same invisible 28px touch target, centered on the same corner /
+   edge point the original 5px handle was centered on; only the corners
+   draw something, as the orange brackets below. */
 
 .cropper-point {
-  width: 22px !important;
-  height: 22px !important;
-  opacity: 0.9 !important;
-  background-color: #39f !important;
-  border-radius: 9999px !important;
+  width: 28px !important;
+  height: 28px !important;
+  opacity: 1 !important;
+  background-color: transparent !important;
 }
 
 .cropper-point.point-e {
-  margin-top: -11px !important;
-  right: -11px !important;
+  margin-top: -14px !important;
+  right: -14px !important;
 }
 
 .cropper-point.point-n {
-  margin-left: -11px !important;
-  top: -11px !important;
+  margin-left: -14px !important;
+  top: -14px !important;
 }
 
 .cropper-point.point-w {
-  margin-top: -11px !important;
-  left: -11px !important;
+  margin-top: -14px !important;
+  left: -14px !important;
 }
 
 .cropper-point.point-s {
-  margin-left: -11px !important;
-  bottom: -11px !important;
+  margin-left: -14px !important;
+  bottom: -14px !important;
 }
 
 .cropper-point.point-ne {
-  top: -11px !important;
-  right: -11px !important;
+  top: -14px !important;
+  right: -14px !important;
 }
 
 .cropper-point.point-nw {
-  top: -11px !important;
-  left: -11px !important;
+  top: -14px !important;
+  left: -14px !important;
 }
 
 .cropper-point.point-sw {
-  bottom: -11px !important;
-  left: -11px !important;
+  bottom: -14px !important;
+  left: -14px !important;
 }
 
 .cropper-point.point-se {
-  bottom: -11px !important;
-  right: -11px !important;
+  bottom: -14px !important;
+  right: -14px !important;
 }
 
 .cropper-point.point-se::before {
   display: none !important;
+}
+
+/* The brackets sit just inside the selection, their outer edge on its
+   border, 14px (to the corner) in from their hit box edges, so the frame
+   never clips them when the selection reaches the photo's edge. Long enough
+   to show a straight run past the rounded corner, and shrinking with a
+   small selection so opposite corners never run into each other. */
+.cropper-point.point-nw::after,
+.cropper-point.point-ne::after,
+.cropper-point.point-sw::after,
+.cropper-point.point-se::after {
+  content: "";
+  position: absolute;
+  box-sizing: border-box;
+  width: min(42px, 45cqw);
+  height: min(42px, 45cqh);
+  border: 0 solid #ff9800;
+}
+
+.cropper-point.point-nw::after {
+  top: 14px;
+  left: 14px;
+  border-top-width: 3.3px;
+  border-left-width: 3.3px;
+  border-top-left-radius: 32px;
+}
+
+.cropper-point.point-ne::after {
+  top: 14px;
+  right: 14px;
+  border-top-width: 3.3px;
+  border-right-width: 3.3px;
+  border-top-right-radius: 32px;
+}
+
+.cropper-point.point-sw::after {
+  bottom: 14px;
+  left: 14px;
+  border-bottom-width: 3.3px;
+  border-left-width: 3.3px;
+  border-bottom-left-radius: 32px;
+}
+
+.cropper-point.point-se::after {
+  bottom: 14px;
+  right: 14px;
+  border-bottom-width: 3.3px;
+  border-right-width: 3.3px;
+  border-bottom-right-radius: 32px;
+}
+
+/* Edge drag areas: widened for fingers, and invisible (the border is the
+   view box outline above). */
+.cropper-line {
+  background-color: transparent !important;
 }
 
 .cropper-line.line-e {
@@ -74,4 +183,53 @@
 .cropper-line.line-s {
   height: 14px !important;
   bottom: -7px !important;
+}
+
+/* PC: no thin border; the wash inset by half the corners' 6px stroke; the
+   corners 52px, 6px thick, rounded like the PC frame (40px). */
+@media (width >= 48rem) {
+  .cropper-view-box {
+    outline: none !important;
+    border-radius: 40px;
+  }
+
+  .cropper-face {
+    top: 3px !important;
+    left: 3px !important;
+    width: calc(100% - 6px) !important;
+    height: calc(100% - 6px) !important;
+    border-radius: 37px;
+  }
+
+  .cropper-point.point-nw::after,
+  .cropper-point.point-ne::after,
+  .cropper-point.point-sw::after,
+  .cropper-point.point-se::after {
+    width: min(52px, 45cqw);
+    height: min(52px, 45cqh);
+  }
+
+  .cropper-point.point-nw::after {
+    border-top-width: 6px;
+    border-left-width: 6px;
+    border-top-left-radius: 40px;
+  }
+
+  .cropper-point.point-ne::after {
+    border-top-width: 6px;
+    border-right-width: 6px;
+    border-top-right-radius: 40px;
+  }
+
+  .cropper-point.point-sw::after {
+    border-bottom-width: 6px;
+    border-left-width: 6px;
+    border-bottom-left-radius: 40px;
+  }
+
+  .cropper-point.point-se::after {
+    border-bottom-width: 6px;
+    border-right-width: 6px;
+    border-bottom-right-radius: 40px;
+  }
 }

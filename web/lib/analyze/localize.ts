@@ -44,10 +44,6 @@ export function foodIngredients(food: FoodData, lang: Locale): string[] {
   return localizedList(food.ingredients, lang);
 }
 
-export function foodAllergens(food: FoodData, lang: Locale): string[] {
-  return localizedList(food.allergens, lang);
-}
-
 function localizedList(
   list: Record<ApiLang, string[]>,
   lang: Locale,

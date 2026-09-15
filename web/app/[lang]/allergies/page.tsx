@@ -13,7 +13,8 @@ import {
 } from "@/lib/allergens/storage";
 
 /** Edit-mode entry point from the home screen (allergy-selection.md 2, 3.1) —
- *  no Skip button, and saving returns to Home rather than resuming a photo. */
+ *  no Skip button, and Back and Save return to Home rather than resuming a
+ *  photo. */
 export default function AllergiesPage() {
   const lang = useLang();
   const router = useRouter();
@@ -33,7 +34,7 @@ export default function AllergiesPage() {
   };
 
   return (
-    <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-black">
+    <div className="flex flex-1 flex-col">
       <AllergySelectionForm
         // Remounts once the real stored value replaces the empty server
         // snapshot, so the form's internal selection state picks it up
@@ -41,6 +42,7 @@ export default function AllergiesPage() {
         key={initialSelected === getServerAllergySelectionSnapshot() ? "pending" : "ready"}
         initialSelected={initialSelected}
         onSave={handleSave}
+        onBack={() => router.push(`/${lang}`)}
       />
     </div>
   );
