@@ -26,6 +26,27 @@ def gemini_unavailable_http_error(error: gemini.GeminiUnavailableError) -> HTTPE
         return HTTPException(status_code=429, detail="AI request limit reached for all models. Please try again later.")
     return HTTPException(status_code=503, detail="AI models are busy right now. Please try again later.")
 
+def food_to_dict(item: FoodItem) -> dict:
+    """The dish shape shared by /analyze-food and /foods/{food_id}, so the web
+    app parses both the same way."""
+    return {
+        "food_id": item.food_id,
+        "name_en": item.name_en,
+        "name_th": item.name_th,
+        "name_jp": item.name_jp,
+        "description": item.description,
+        "ingredients": item.ingredients,
+        "allergens": item.allergens,
+        "spicy_level": item.spicy_level,
+        "calories": item.calories_kcal,
+        "protein": item.protein_g,
+        "carbs": item.carbohydrate_g,
+        "fat": item.fat_g,
+        "how_to_eat": item.how_to_eat,
+        "source_url": item.source_url,
+        "image_url": item.image_url
+    }
+
 @router.post("/analyze-food")
 async def analyze_food(
     file: UploadFile = File(...),
@@ -88,24 +109,7 @@ async def analyze_food(
                 "data": []
             }
         
-        food_list_data = []
-        for item in food_items:
-            food_list_data.append({
-                "food_id": item.food_id,          
-                "name_en": item.name_en,
-                "name_th": item.name_th,
-                "name_jp": item.name_jp,          
-                "description": item.description,  
-                "ingredients": item.ingredients,  
-                "spicy_level": item.spicy_level,
-                "calories": item.calories_kcal,    
-                "protein": item.protein_g,        
-                "carbs": item.carbohydrate_g,      
-                "fat": item.fat_g,                
-                "how_to_eat": item.how_to_eat,    
-                "source_url": item.source_url,
-                "image_url": item.image_url
-            })
+        food_list_data = [food_to_dict(item) for item in food_items]
 
         print(f"[DEBUG] 7. Successfully matched {len(food_list_data)} items in database!")
         
@@ -121,6 +125,20 @@ async def analyze_food(
     except Exception as e:
         print(f"\n[DEBUG ERROR] analyze_food failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"AI Processing Error: {str(e)}")
+
+@router.get("/foods/{food_id}")
+async def get_food(food_id: int, db: AsyncSession = Depends(get_session)):
+    # "Not found" stays a 200 with a status, like /analyze-food: the web app
+    # reads 404 as "the /api rewrite is missing" (a configuration error).
+    try:
+        item = await db.get(FoodItem, food_id)
+    except Exception as e:
+        print(f"\n[DEBUG ERROR] get_food failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Database error.")
+
+    if item is None:
+        return {"status": "not_found", "data": None}
+    return {"status": "success", "data": food_to_dict(item)}
 
 @router.post("/ingredient-detail")
 async def get_ingredient_detail(

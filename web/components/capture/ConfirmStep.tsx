@@ -2,14 +2,26 @@
 
 import { useEffect, useState } from "react";
 
+import {
+  CaptureScreen,
+  DecisionControls,
+  FrameMessage,
+  MessagePill,
+} from "@/components/capture/CaptureScreen";
+import { ProgressText } from "@/components/ui/ProgressText";
 import { runAnalysis } from "@/lib/capture/runAnalysis";
 import { hasStoredAllergySelection } from "@/lib/allergens/storage";
 import { useT } from "@/lib/i18n/useT";
 import { useObjectUrl } from "@/lib/hooks/useObjectUrl";
 import { useCaptureStore } from "@/lib/store/useCaptureStore";
 
-type Status = "compressing" | "ready" | "submitting";
-
+/** "Confirm Image", the last check before analysis (Figma: phone "User" /
+ *  PC "MacBook Pro 16' - 6"): the cropped image, small and centered in a
+ *  grey frame; Back returns to cropping and the check mark sends it for
+ *  analysis — by way of the allergy step the first time, which starts it
+ *  and hands back here. "Analyzing..." shows here while it runs. On phones
+ *  the screen is full-height without the site header, the hint above the
+ *  frame. */
 export function ConfirmStep() {
   const t = useT();
 
@@ -21,16 +33,17 @@ export function ConfirmStep() {
     (state) => state.setSubmitErrorReason,
   );
   const goToStep = useCaptureStore((state) => state.goToStep);
-  const reset = useCaptureStore((state) => state.reset);
+  const analyzing = useCaptureStore((state) => state.analyzing);
 
-  const [status, setStatus] = useState<Status>("compressing");
+  // Coming back from the allergy step or the result, the compressed copy of
+  // this crop is already there (a new crop clears it).
+  const [compressing, setCompressing] = useState(!finalImage);
   const [localErrorMessage, setLocalErrorMessage] = useState<string | null>(
     null,
   );
 
-  // Analysis that failed after this step handed off to the first-time
-  // allergy step surfaces here, since the user lands back on "confirm";
-  // derived at render time rather than mirrored into local state.
+  // Analysis that failed surfaces here via the store, derived at render
+  // time rather than mirrored into local state.
   const errorMessage =
     localErrorMessage ??
     (submitErrorReason
@@ -38,12 +51,12 @@ export function ConfirmStep() {
       : null);
 
   useEffect(() => {
-    if (!croppedImage) return;
+    if (!croppedImage || useCaptureStore.getState().finalImage) return;
 
     let cancelled = false;
 
     (async () => {
-      setStatus("compressing");
+      setCompressing(true);
       setLocalErrorMessage(null);
 
       try {
@@ -62,12 +75,12 @@ export function ConfirmStep() {
         });
         if (cancelled) return;
         setFinalImage(compressed);
-        setStatus("ready");
+        setCompressing(false);
       } catch {
         if (cancelled) return;
         setLocalErrorMessage(t("capture.confirming.errorCompress"));
         setFinalImage(croppedImage);
-        setStatus("ready");
+        setCompressing(false);
       }
     })();
 
@@ -78,25 +91,20 @@ export function ConfirmStep() {
 
   const previewUrl = useObjectUrl(finalImage ?? croppedImage);
 
-  const handleDecide = async () => {
+  const handleDecide = () => {
     const image = finalImage ?? croppedImage;
     if (!image) return;
 
     // First-time flow: collect allergies before running AI analysis
-    // (allergy-selection.md 3.1). AllergyStep resumes analysis itself once
-    // the user saves or skips.
+    // (allergy-selection.md 3.1); AllergyStep starts it and hands back.
     if (!hasStoredAllergySelection()) {
       goToStep("allergy");
       return;
     }
-
-    setStatus("submitting");
     setLocalErrorMessage(null);
-    setSubmitErrorReason(null);
-    await runAnalysis(image);
     // Technical failures land back here via submitErrorReason, read above;
-    // success/notFound already moved the store to another step.
-    setStatus("ready");
+    // success/notFound move the store on to another step.
+    void runAnalysis(image);
   };
 
   const handleRedoCrop = () => {
@@ -104,70 +112,61 @@ export function ConfirmStep() {
     goToStep("crop");
   };
 
-  const handleRetake = () => {
-    reset();
-    goToStep("capture");
-  };
+  const isBusy = compressing || analyzing;
 
-  const isBusy = status === "compressing" || status === "submitting";
+  // One message pill: an error or progress takes the place of the hint. On
+  // phones it sits above the frame and always shows something; on PC it
+  // only appears for these, at the bottom of the frame.
+  const progressMessage =
+    compressing ? (
+      <ProgressText text={t("capture.confirming.compressing")} />
+    ) : analyzing ? (
+      <ProgressText text={t("capture.confirming.analyzing")} />
+    ) : null;
+  const message = errorMessage ?? progressMessage;
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4">
-      <h1 className="text-xl font-semibold">
-        {t("capture.confirming.heading")}
-      </h1>
-
-      <div className="flex flex-1 items-center justify-center overflow-hidden">
-        {previewUrl && (
-          // eslint-disable-next-line @next/next/no-img-element -- previewing a client-side Blob object URL
-          <img
-            src={previewUrl}
-            alt=""
-            className="max-h-full max-w-full object-contain"
-          />
-        )}
-      </div>
-
-      {status === "compressing" && (
-        <p className="text-zinc-600 dark:text-zinc-400">
-          {t("capture.confirming.compressing")}
-        </p>
-      )}
-      {status === "submitting" && (
-        <p className="text-zinc-600 dark:text-zinc-400">
-          {t("capture.confirming.analyzing")}
-        </p>
-      )}
-      {errorMessage && (
-        <p className="text-red-600 dark:text-red-400">{errorMessage}</p>
-      )}
-
-      <div className="flex flex-col gap-2">
-        <button
-          type="button"
-          onClick={handleDecide}
-          disabled={isBusy}
-          className="rounded-full bg-foreground px-8 py-4 text-lg font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
-        >
-          {t("capture.confirming.decide")}
-        </button>
-        <button
-          type="button"
-          onClick={handleRedoCrop}
-          disabled={status === "submitting"}
-          className="text-sm text-zinc-600 underline dark:text-zinc-400"
-        >
-          {t("capture.confirming.redoCrop")}
-        </button>
-        <button
-          type="button"
-          onClick={handleRetake}
-          disabled={status === "submitting"}
-          className="text-sm text-zinc-600 underline dark:text-zinc-400"
-        >
-          {t("capture.confirming.retake")}
-        </button>
-      </div>
-    </div>
+    <CaptureScreen
+      heading={t("capture.confirming.heading")}
+      className="bg-white md:bg-[#f0f0f0]"
+      frameClassName="rounded-[32px] bg-[#e2e2e2] shadow-[0_0_12px_rgba(0,0,0,0.24)] md:rounded-[40px] md:border-4 md:border-[rgba(86,67,52,0.16)] md:shadow-[0_0_16px_rgba(0,0,0,0.24)]"
+      phoneTopBar={
+        <MessagePill alert={errorMessage !== null} className="mx-auto w-fit">
+          {message ?? t("capture.confirming.hint")}
+        </MessagePill>
+      }
+      frame={
+        <>
+          {previewUrl && (
+            // Exactly what will be analyzed, whole and at no more than its
+            // own size, centered with a wide margin as in the design.
+            <div className="absolute inset-0 flex items-center justify-center p-[12%] md:p-[21%]">
+              {/* eslint-disable-next-line @next/next/no-img-element -- previewing a client-side Blob object URL */}
+              <img
+                src={previewUrl}
+                alt=""
+                className="max-h-full max-w-full rounded-lg"
+              />
+            </div>
+          )}
+          {message && (
+            <FrameMessage alert={errorMessage !== null} only="pc">
+              {message}
+            </FrameMessage>
+          )}
+        </>
+      }
+      controls={
+        <DecisionControls
+          label={t("capture.confirming.label")}
+          backLabel={t("capture.confirming.redoCrop")}
+          onBack={handleRedoCrop}
+          backDisabled={analyzing}
+          nextLabel={t("capture.confirming.decide")}
+          onNext={handleDecide}
+          nextDisabled={isBusy}
+        />
+      }
+    />
   );
 }

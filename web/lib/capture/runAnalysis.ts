@@ -1,4 +1,5 @@
 import { submitPhoto } from "@/lib/capture/submitPhoto";
+import { saveRecentScan } from "@/lib/recentScans/storage";
 import { useCaptureStore } from "@/lib/store/useCaptureStore";
 
 /** Submits the confirmed photo and drives the capture store to the matching
@@ -8,12 +9,19 @@ import { useCaptureStore } from "@/lib/store/useCaptureStore";
  *  than via a hook) so it can be called from either component's event
  *  handlers without depending on which one is mounted when it resolves. */
 export async function runAnalysis(image: Blob): Promise<void> {
+  const { setAnalyzing, setSubmitErrorReason } = useCaptureStore.getState();
+  setAnalyzing(true);
+  setSubmitErrorReason(null);
   const result = await submitPhoto(image);
-  const { setFoods, goToStep, setSubmitErrorReason } =
-    useCaptureStore.getState();
+  setAnalyzing(false);
+  const { setFoods, goToStep } = useCaptureStore.getState();
 
   if (result.outcome === "success") {
     setFoods(result.foods);
+    // Every dish the scan found is recorded together, as one history entry
+    // (recent-scans.md 3.1).
+    const { scannedAt } = useCaptureStore.getState();
+    if (scannedAt) saveRecentScan(result.foods, scannedAt);
     return;
   }
 

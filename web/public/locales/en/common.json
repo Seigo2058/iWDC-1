@@ -3,7 +3,10 @@
   "siteTitle": "Sample Site",
   "capture": {
     "home": {
-      "takePhoto": "Take Photo"
+      "title": "Start scanning",
+      "description": "Let our AI analyze your meal for you. Upload an image or use your camera",
+      "upload": "Upload",
+      "camera": "Camera"
     },
     "capturing": {
       "heading": "Take a Photo",
@@ -11,58 +14,81 @@
       "cancel": "Back to Home",
       "converting": "Processing image...",
       "errorInvalidFile": "Please select an image file.",
-      "errorHeicConvert": "Failed to convert the image. Please try again."
+      "errorHeicConvert": "Failed to convert the image. Please try again.",
+      "starting": "Starting the camera...",
+      "shutter": "Take Photo",
+      "chooseFromLibrary": "Choose a Photo",
+      "errorPermission": "Camera access is blocked. Allow the camera in your browser settings, or choose a photo instead.",
+      "errorNoCamera": "No camera was found. Please choose a photo instead.",
+      "errorUnsupported": "The camera can't be used in this browser. Please choose a photo instead.",
+      "errorCamera": "Couldn't start the camera. Please try again.",
+      "errorCapture": "Failed to take the photo. Please try again.",
+      "back": "Back",
+      "flash": "Flash",
+      "hint": "Place the menu inside the frame"
+    },
+    "reviewing": {
+      "heading": "Check the Photo",
+      "question": "Use this photo?",
+      "hint": "Make sure text is readable.",
+      "retake": "Retake",
+      "use": "Use This Photo"
     },
     "cropping": {
       "heading": "Crop the Photo",
-      "rotateLeft": "Rotate Left",
-      "rotateRight": "Rotate Right",
+      "label": "Crop Image",
       "reset": "Reset",
+      "hint": "Make sure text is readable.",
       "next": "Next",
-      "retake": "Retake",
+      "back": "Back",
       "errorCrop": "Failed to crop the image. Please try again."
     },
     "confirming": {
       "heading": "Confirm the Photo",
       "compressing": "Optimizing image...",
-      "analyzing": "Analyzing the dish...",
+      "analyzing": "Analyzing...",
       "decide": "Decide Photo",
       "redoCrop": "Redo Crop",
-      "retake": "Retake",
       "errorCompress": "Failed to optimize the image. Using the original instead.",
       "error": {
         "config": "The app is not configured correctly. Please contact support.",
         "network": "Could not reach the server. Check your connection and try again.",
         "timeout": "The analysis is taking too long. Please try again.",
         "server": "The analysis failed. Please try again."
-      }
+      },
+      "label": "Confirm Image",
+      "hint": "Make sure text is readable."
     },
     "result": {
-      "description": "Description",
       "ingredients": "Ingredients",
-      "allergens": "Allergens",
-      "spicyLevel": "Spiciness",
+      "spicyLevel": "Spicy Level",
       "spicy": {
         "none": "Not spicy",
         "low": "Mildly spicy",
         "medium": "Medium spicy",
         "very": "Very spicy"
       },
-      "nutrition": "Nutrition",
-      "perServing": "Estimated values per serving.",
+      "nutrition": "Nutritional Profile",
       "calories": "Calories",
       "protein": "Protein",
       "carbs": "Carbs",
       "fat": "Fat",
       "howToEat": "How to Eat",
-      "referencePhoto": "Reference Photo",
-      "source": "Source",
-      "takeAnother": "Take Another Photo",
-      "backHome": "Back to Home",
-      "foundCount_one": "{{count}} dish found",
-      "foundCount_other": "{{count}} dishes found",
+      "detectedFoods": "Detected Foods ({{count}})",
+      "checkDishes": "Check out the information of the foods.",
+      "back": "Back",
       "selectDish": "Tap a dish to see its details.",
-      "backToList": "Back to List"
+      "allergyWarning": "Contains allergens you selected",
+      "allergyNoMatch": "None of your selected allergens are listed for this dish.",
+      "allergyNoData": "No allergen information is registered for this dish.",
+      "allergyCheckNote": "Based on our database, which may be incomplete. Always check with the restaurant.",
+      "ingredientsSafety": "Ingredients & Safety",
+      "allergensDetected": "Allergens Detected",
+      "yourAllergy": "Your Allergy",
+      "otherAllergen": "Other Allergen",
+      "moreInformation": "More Information",
+      "openSource": "Open Source Link",
+      "home": "Home"
     },
     "notFound": {
       "heading": "Could not identify the dish",
@@ -72,7 +98,6 @@
       "backHome": "Back to Home"
     },
     "ingredient": {
-      "hint": "Tap an ingredient to see what it is.",
       "whatIsIt": "What is it?",
       "madeOf": "Made of",
       "loading": "Generating a description...",
@@ -88,11 +113,11 @@
     }
   },
   "allergies": {
-    "heading": "Food Allergies",
-    "description": "Select any food allergies you have. This is saved only on this device.",
-    "save": "Save and Continue",
+    "heading": "Allergies & Intolerances",
+    "description": "Get critical safety alerts.",
+    "save": "Save",
     "skip": "Skip",
-    "settingsLink": "Allergy Settings",
+    "back": "Back",
     "categories": {
       "seafood": "Seafood",
       "meat": "Meat",
@@ -123,5 +148,43 @@
       "gluten": "Gluten",
       "gelatin": "Gelatin"
     }
+  },
+  "nav": {
+    "home": "Home",
+    "language": "Language"
+  },
+  "home": {
+    "myAllergies": {
+      "title": "My Allergies",
+      "edit": "Edit",
+      "notSet": "Not set"
+    }
+  },
+  "recentScans": {
+    "heading": "Recent Scans",
+    "empty": "No Recent Scan",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "daysAgo_one": "{{count}} day ago",
+    "daysAgo_other": "{{count}} days ago",
+    "groupName": "{{name}} and more",
+    "multipleDishes": "Multiple dishes"
+  },
+  "foodPage": {
+    "loading": "Loading dish information...",
+    "backHome": "Back to Home",
+    "retry": "Try Again",
+    "error": {
+      "notFound": "We couldn't find this dish.",
+      "network": "Could not reach the server. Check your connection and try again.",
+      "timeout": "Loading took too long. Please try again.",
+      "config": "The app is not configured correctly. Please contact support.",
+      "server": "Could not load the dish information. Please try again."
+    }
+  },
+  "scanPage": {
+    "heading_one": "{{count}} dish",
+    "heading_other": "{{count}} dishes",
+    "notFound": "This scan could not be found in your history."
   }
 }

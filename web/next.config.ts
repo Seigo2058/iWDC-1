@@ -6,11 +6,15 @@ import type { NextConfig } from "next";
 // single tunnel and avoids HTTPS-page -> HTTP-backend mixed content and CORS.
 const aiApiOrigin = process.env.AI_API_ORIGIN?.replace(/\/+$/, "");
 
-const AI_API_PATHS = ["/api/analyze-food", "/api/ingredient-detail"];
+const AI_API_PATHS = [
+  "/api/analyze-food",
+  "/api/ingredient-detail",
+  "/api/foods/:foodId",
+];
 
 if (!aiApiOrigin) {
   console.warn(
-    `[next.config] AI_API_ORIGIN is not set, so ${AI_API_PATHS.join(" and ")} will 404 instead of reaching the AI backend.`,
+    `[next.config] AI_API_ORIGIN is not set, so ${AI_API_PATHS.join(", ")} will 404 instead of reaching the AI backend.`,
   );
 }
 

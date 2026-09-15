@@ -1,10 +1,5 @@
-import type {
-  AnalyzeResult,
-  ApiLang,
-  FoodData,
-  LocalizedText,
-  SpicyLevel,
-} from "@/lib/analyze/types";
+import { asRecord, toFoodData } from "@/lib/analyze/parseFood";
+import type { AnalyzeResult, FoodData } from "@/lib/analyze/types";
 
 // Same-origin path; next.config.ts rewrites it to the FastAPI backend.
 const ANALYZE_FOOD_PATH = "/api/analyze-food";
@@ -62,90 +57,13 @@ export async function submitPhoto(image: Blob): Promise<AnalyzeResult> {
 type SuccessBody = { status: "success"; data: unknown[] };
 
 function isSuccessBody(body: unknown): body is SuccessBody {
-  if (typeof body !== "object" || body === null) return false;
-  const candidate = body as Record<string, unknown>;
+  const candidate = asRecord(body);
   return candidate.status === "success" && Array.isArray(candidate.data);
 }
 
 function toFoodList(items: unknown[]): FoodData[] {
   return items.flatMap((item) => {
-    const food = toFoodData(asRecord(item));
+    const food = toFoodData(item);
     return food ? [food] : [];
   });
-}
-
-function toFoodData(raw: Record<string, unknown>): FoodData | null {
-  const nameEn = asText(raw.name_en);
-  if (!nameEn) return null;
-
-  return {
-    foodId: asNumber(raw.food_id),
-    nameEn,
-    nameTh: asText(raw.name_th) ?? nameEn,
-    nameJp: asText(raw.name_jp) ?? nameEn,
-    description: toLocalizedText(raw.description),
-    ingredients: toLocalizedList(raw.ingredients),
-    allergens: toLocalizedList(raw.allergens),
-    spicyLevel: toSpicyLevel(raw.spicy_level),
-    calories: asNumber(raw.calories),
-    protein: asNumber(raw.protein),
-    carbs: asNumber(raw.carbs),
-    fat: asNumber(raw.fat),
-    howToEat: toLocalizedText(raw.how_to_eat),
-    sourceUrl: asText(raw.source_url),
-    imageUrl: asText(raw.image_url),
-  };
-}
-
-function asText(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0 ? value : null;
-}
-
-function asNumber(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null
-    ? (value as Record<string, unknown>)
-    : {};
-}
-
-function toLocalizedText(value: unknown): LocalizedText {
-  const raw = asRecord(value);
-  const en = asText(raw.en) ?? "";
-  return { en, th: asText(raw.th) ?? en, jp: asText(raw.jp) ?? en };
-}
-
-function toStringList(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string")
-    : [];
-}
-
-/** `ingredients` was first specified as a flat English array and later as a
- *  per-language object (connect-aisystem.md 3.3), so both shapes are accepted.
- *  `allergens` follows the same per-language shape. */
-function toLocalizedList(value: unknown): Record<ApiLang, string[]> {
-  if (Array.isArray(value)) {
-    const shared = toStringList(value);
-    return { en: shared, th: shared, jp: shared };
-  }
-
-  const raw = asRecord(value);
-  const en = toStringList(raw.en);
-  const th = toStringList(raw.th);
-  const jp = toStringList(raw.jp);
-  return { en, th: th.length > 0 ? th : en, jp: jp.length > 0 ? jp : en };
-}
-
-const SPICY_LEVELS: SpicyLevel[] = [
-  "No Spicy",
-  "Low Spicy",
-  "Medium Spicy",
-  "Very Spicy",
-];
-
-function toSpicyLevel(value: unknown): SpicyLevel | null {
-  return SPICY_LEVELS.find((level) => level === value) ?? null;
 }

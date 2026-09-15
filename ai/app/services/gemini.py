@@ -26,26 +26,42 @@ DEFAULT_MODELS = [
     "gemini-3.5-flash-lite",
 ]
 
-# Normal answers take ~1-6 s. An overloaded model was seen hanging for 36 s
-# before answering 503, which would outlast the web app's own timeouts
-# (20 s ingredient detail, 30 s analysis), so each model gets this long.
-ATTEMPT_TIMEOUT_SECONDS = 12
+# Thinking is most of Gemini 3's latency and these tasks (naming a dish,
+# explaining an ingredient) need little of it: image analysis on
+# gemini-3.6-flash took 8.5 s by default and 1.9 s at MINIMAL (2026-09-14).
+# Not every model accepts every level (gemini-3.8-flash rejects MINIMAL with a
+# 400), so each model steps down this list until one is accepted; None leaves
+# the model's default.
+THINKING_LEVELS: list[types.ThinkingLevel | None] = [
+    types.ThinkingLevel.MINIMAL,
+    types.ThinkingLevel.LOW,
+    None,
+]
+
+# With minimal thinking a healthy model answers in ~2-3 s. Overloaded ones were
+# seen hanging for 20-36 s before a 503, so each model gets this long; two
+# misses still leave room for a third model within the web app's timeouts
+# (20 s ingredient detail, 30 s analysis).
+ATTEMPT_TIMEOUT_SECONDS = 8
 
 # A per-day quota does not come back until Google's daily reset, but its 429
 # still carries a short retryDelay, so the model is rechecked hourly instead;
 # a failed 429 call does not count against the quota.
 DAILY_QUOTA_RECHECK_SECONDS = 60 * 60
 DEFAULT_RETRY_SECONDS = 60
-# "Spikes in demand are usually temporary" (Gemini's 503 message).
-BUSY_RETRY_SECONDS = 60
+# Overload was seen lasting well over a minute; rechecking every minute made
+# most scans pay the timeout of the busy model first again.
+BUSY_RETRY_SECONDS = 10 * 60
 
 QUOTA = "quota"
 BUSY = "busy"
 
-# In-memory, per process: until when each model is skipped and why, and models
-# the API no longer serves (404).
+# In-memory, per process: until when each model is skipped and why, models the
+# API no longer serves (404), and the thinking level each model accepts (an
+# index into THINKING_LEVELS; absent means the first).
 _cooldowns: dict[str, tuple[float, str]] = {}
 _unavailable: set[str] = set()
+_thinking_level_index: dict[str, int] = {}
 
 
 class GeminiUnavailableError(Exception):
@@ -91,12 +107,7 @@ async def generate_content(
             continue
 
         try:
-            response = await asyncio.wait_for(
-                _client().aio.models.generate_content(
-                    model=model, contents=contents, config=config
-                ),
-                timeout=ATTEMPT_TIMEOUT_SECONDS,
-            )
+            response = await _generate_on(model, contents, config)
         except TimeoutError as error:
             _cool_down(model, BUSY_RETRY_SECONDS, BUSY,
                        f"did not answer within {ATTEMPT_TIMEOUT_SECONDS}s")
@@ -127,6 +138,49 @@ async def generate_content(
     raise GeminiUnavailableError(
         quota_exhausted=all(reason == QUOTA for reason in cooling)
     ) from last_error
+
+
+async def _generate_on(
+    model: str, contents, config: types.GenerateContentConfig | None
+) -> types.GenerateContentResponse:
+    """One model, at the lowest thinking level it accepts. A caller-supplied
+    thinking_config is left untouched."""
+    if config is not None and config.thinking_config is not None:
+        return await _attempt(model, contents, config)
+
+    index = _thinking_level_index.get(model, 0)
+    while True:
+        level = THINKING_LEVELS[index]
+        attempt_config = (config or types.GenerateContentConfig()).model_copy(
+            update={
+                "thinking_config": types.ThinkingConfig(thinking_level=level)
+                if level
+                else None
+            }
+        )
+        try:
+            return await _attempt(model, contents, attempt_config)
+        except errors.APIError as error:
+            if not (
+                error.code == 400
+                and "thinking" in (error.message or "").lower()
+                and index + 1 < len(THINKING_LEVELS)
+            ):
+                raise
+            index += 1
+            _thinking_level_index[model] = index
+            print(f"[GEMINI] {model} rejected thinking level {level}; using {THINKING_LEVELS[index]}.")
+
+
+async def _attempt(
+    model: str, contents, config: types.GenerateContentConfig | None
+) -> types.GenerateContentResponse:
+    return await asyncio.wait_for(
+        _client().aio.models.generate_content(
+            model=model, contents=contents, config=config
+        ),
+        timeout=ATTEMPT_TIMEOUT_SECONDS,
+    )
 
 
 def _retry_after_seconds(error: errors.APIError) -> float:

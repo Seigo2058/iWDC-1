@@ -3,7 +3,10 @@
   "siteTitle": "サンプルサイト",
   "capture": {
     "home": {
-      "takePhoto": "撮影する"
+      "title": "スキャンを始める",
+      "description": "AIが料理を分析します。画像をアップロードするか、カメラで撮影してください",
+      "upload": "アップロード",
+      "camera": "カメラ"
     },
     "capturing": {
       "heading": "写真を撮影",
@@ -11,36 +14,53 @@
       "cancel": "ホームに戻る",
       "converting": "画像を処理しています...",
       "errorInvalidFile": "画像ファイルを選択してください。",
-      "errorHeicConvert": "画像の変換に失敗しました。もう一度お試しください。"
+      "errorHeicConvert": "画像の変換に失敗しました。もう一度お試しください。",
+      "starting": "カメラを起動しています...",
+      "shutter": "撮影",
+      "chooseFromLibrary": "写真を選択",
+      "errorPermission": "カメラの使用が許可されていません。ブラウザの設定でカメラを許可するか、写真を選択してください。",
+      "errorNoCamera": "カメラが見つかりません。写真を選択してください。",
+      "errorUnsupported": "このブラウザではカメラを使用できません。写真を選択してください。",
+      "errorCamera": "カメラを起動できませんでした。もう一度お試しください。",
+      "errorCapture": "撮影に失敗しました。もう一度お試しください。",
+      "back": "戻る",
+      "flash": "フラッシュ",
+      "hint": "メニューを枠内に収めてください"
+    },
+    "reviewing": {
+      "heading": "写真をチェック",
+      "question": "この写真を使いますか？",
+      "hint": "文字が読めるか確認してください",
+      "retake": "撮り直す",
+      "use": "この写真を使う"
     },
     "cropping": {
       "heading": "写真をトリミング",
-      "rotateLeft": "左に回転",
-      "rotateRight": "右に回転",
+      "label": "写真をトリミング",
       "reset": "リセット",
+      "hint": "文字が読めるか確認してください",
       "next": "次へ",
-      "retake": "撮り直す",
+      "back": "戻る",
       "errorCrop": "トリミングに失敗しました。もう一度お試しください。"
     },
     "confirming": {
       "heading": "写真を確認",
       "compressing": "画像を最適化しています...",
-      "analyzing": "料理を解析しています...",
+      "analyzing": "分析中...",
       "decide": "確定する",
       "redoCrop": "トリミングをやり直す",
-      "retake": "撮り直す",
       "errorCompress": "画像の最適化に失敗しました。元の画像を使用します。",
       "error": {
         "config": "アプリの設定が正しくありません。管理者にお問い合わせください。",
         "network": "サーバーに接続できませんでした。通信環境を確認してもう一度お試しください。",
         "timeout": "解析に時間がかかりすぎました。もう一度お試しください。",
         "server": "解析に失敗しました。もう一度お試しください。"
-      }
+      },
+      "label": "画像を確認",
+      "hint": "文字が読めるか確認してください"
     },
     "result": {
-      "description": "説明",
       "ingredients": "主な材料",
-      "allergens": "アレルギー情報",
       "spicyLevel": "辛さ",
       "spicy": {
         "none": "辛くない",
@@ -49,19 +69,26 @@
         "very": "とても辛い"
       },
       "nutrition": "栄養情報",
-      "perServing": "一食分の目安です。",
       "calories": "カロリー",
       "protein": "タンパク質",
       "carbs": "炭水化物",
       "fat": "脂質",
       "howToEat": "食べ方",
-      "referencePhoto": "参考写真",
-      "source": "出典",
-      "takeAnother": "もう一度撮影する",
-      "backHome": "ホームに戻る",
-      "foundCount_other": "{{count}}品の料理が見つかりました",
+      "detectedFoods": "見つかった料理 ({{count}})",
+      "checkDishes": "料理の情報をチェックしましょう。",
+      "back": "戻る",
       "selectDish": "料理をタップすると詳細を表示します。",
-      "backToList": "一覧に戻る"
+      "allergyWarning": "設定したアレルギー品目が含まれています",
+      "allergyNoMatch": "設定したアレルギー品目は、この料理のアレルギー情報に含まれていません。",
+      "allergyNoData": "この料理のアレルギー情報は登録されていません。",
+      "allergyCheckNote": "データベースの情報による判定で、すべてを網羅しているとは限りません。必ずお店に確認してください。",
+      "ingredientsSafety": "原材料と安全性",
+      "allergensDetected": "検出されたアレルゲン",
+      "yourAllergy": "あなたのアレルギー",
+      "otherAllergen": "その他のアレルゲン",
+      "moreInformation": "詳細情報",
+      "openSource": "情報元を開く",
+      "home": "ホーム"
     },
     "notFound": {
       "heading": "料理を識別できませんでした",
@@ -71,7 +98,6 @@
       "backHome": "ホームに戻る"
     },
     "ingredient": {
-      "hint": "食材をタップすると説明を表示します。",
       "whatIsIt": "どんな食材？",
       "madeOf": "原材料",
       "loading": "説明を生成しています...",
@@ -87,11 +113,11 @@
     }
   },
   "allergies": {
-    "heading": "食物アレルギー",
-    "description": "該当する食物アレルギーを選択してください。この端末にのみ保存されます。",
-    "save": "保存して次へ",
+    "heading": "アレルギー・不耐症",
+    "description": "重要な安全アラートを受け取れます。",
+    "save": "保存",
     "skip": "スキップ",
-    "settingsLink": "アレルギー設定",
+    "back": "戻る",
     "categories": {
       "seafood": "魚介類",
       "meat": "肉類",
@@ -122,5 +148,41 @@
       "gluten": "グルテン(小麦など)",
       "gelatin": "ゼラチン"
     }
+  },
+  "nav": {
+    "home": "ホーム",
+    "language": "言語"
+  },
+  "home": {
+    "myAllergies": {
+      "title": "マイアレルギー",
+      "edit": "編集",
+      "notSet": "未設定"
+    }
+  },
+  "recentScans": {
+    "heading": "最近のスキャン",
+    "empty": "スキャン履歴はありません",
+    "today": "今日",
+    "yesterday": "昨日",
+    "daysAgo_other": "{{count}}日前",
+    "groupName": "{{name}}など",
+    "multipleDishes": "複数の料理"
+  },
+  "foodPage": {
+    "loading": "料理情報を読み込んでいます...",
+    "backHome": "ホームに戻る",
+    "retry": "もう一度試す",
+    "error": {
+      "notFound": "この料理の情報が見つかりませんでした。",
+      "network": "サーバーに接続できませんでした。通信環境を確認してもう一度お試しください。",
+      "timeout": "読み込みに時間がかかりすぎました。もう一度お試しください。",
+      "config": "アプリの設定が正しくありません。管理者にお問い合わせください。",
+      "server": "料理情報を読み込めませんでした。もう一度お試しください。"
+    }
+  },
+  "scanPage": {
+    "heading_other": "{{count}}品の料理",
+    "notFound": "このスキャン履歴は見つかりませんでした。"
   }
 }

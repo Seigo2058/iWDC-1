@@ -3,6 +3,15 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* SiteHeader's height, for screens that fill exactly the rest of the
+     viewport (the camera). */
+  --site-header-height: 72px;
+}
+
+@media (width >= 48rem) {
+  :root {
+    --site-header-height: 143px;
+  }
 }
 
 @theme inline {
@@ -10,6 +19,22 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-brand: var(--font-google-sans), sans-serif;
+}
+
+@theme {
+  /* ProgressText's "...": revealed a dot at a time (none, 1, 2, 3) by
+     clipping, so the text keeps its width. */
+  --animate-ellipsis: ellipsis 1.2s steps(4, jump-none) infinite;
+
+  @keyframes ellipsis {
+    from {
+      clip-path: inset(0 100% 0 0);
+    }
+    to {
+      clip-path: inset(0 0 0 0);
+    }
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -23,6 +48,22 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Side gutters of the ALLERQUAL layout (Figma Home / MacBook Pro 16"):
+   on phones (up to 767px) content is a column of at most 33rem with at least
+   1.5rem of margin; on PC (from the md breakpoint, 768px) it is 80% of the
+   screen width, as the designs' 1408px column is of their 1728px screen.
+   Applied to full-width elements, so a horizontal scroller can bleed to the
+   screen edge while its first card still lines up with the column. */
+@utility px-gutter {
+  padding-inline: max(1.5rem, calc((100% - 33rem) / 2));
+  scroll-padding-inline: max(1.5rem, calc((100% - 33rem) / 2));
+
+  @media (width >= 48rem) {
+    padding-inline: 10%;
+    scroll-padding-inline: 10%;
+  }
 }
 
 html,

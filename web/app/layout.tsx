@@ -1,6 +1,14 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Google_Sans } from "next/font/google";
 import "./globals.css";
+
+// The Figma designs' typeface (ALLERQUAL home and navigation bar). The font
+// has no Japanese glyphs, so Japanese text falls back to the system font.
+const googleSans = Google_Sans({
+  variable: "--font-google-sans",
+  weight: ["400", "500", "700"],
+  subsets: ["latin", "thai"],
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,7 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${googleSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
