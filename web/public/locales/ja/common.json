@@ -25,11 +25,102 @@
     "confirming": {
       "heading": "写真を確認",
       "compressing": "画像を最適化しています...",
+      "analyzing": "料理を解析しています...",
       "decide": "確定する",
       "redoCrop": "トリミングをやり直す",
       "retake": "撮り直す",
       "errorCompress": "画像の最適化に失敗しました。元の画像を使用します。",
-      "done": "写真を保存しました。"
+      "error": {
+        "config": "アプリの設定が正しくありません。管理者にお問い合わせください。",
+        "network": "サーバーに接続できませんでした。通信環境を確認してもう一度お試しください。",
+        "timeout": "解析に時間がかかりすぎました。もう一度お試しください。",
+        "server": "解析に失敗しました。もう一度お試しください。"
+      }
+    },
+    "result": {
+      "description": "説明",
+      "ingredients": "主な材料",
+      "allergens": "アレルギー情報",
+      "spicyLevel": "辛さ",
+      "spicy": {
+        "none": "辛くない",
+        "low": "少し辛い",
+        "medium": "中辛",
+        "very": "とても辛い"
+      },
+      "nutrition": "栄養情報",
+      "perServing": "一食分の目安です。",
+      "calories": "カロリー",
+      "protein": "タンパク質",
+      "carbs": "炭水化物",
+      "fat": "脂質",
+      "howToEat": "食べ方",
+      "referencePhoto": "参考写真",
+      "source": "出典",
+      "takeAnother": "もう一度撮影する",
+      "backHome": "ホームに戻る",
+      "foundCount_other": "{{count}}品の料理が見つかりました",
+      "selectDish": "料理をタップすると詳細を表示します。",
+      "backToList": "一覧に戻る"
+    },
+    "notFound": {
+      "heading": "料理を識別できませんでした",
+      "message": "料理が大きく写るように撮影するか、トリミングをやり直してみてください。",
+      "retake": "もう一度撮影する",
+      "redoCrop": "画像を再編集する",
+      "backHome": "ホームに戻る"
+    },
+    "ingredient": {
+      "hint": "食材をタップすると説明を表示します。",
+      "whatIsIt": "どんな食材？",
+      "madeOf": "原材料",
+      "loading": "説明を生成しています...",
+      "disclaimer": "AIが生成した説明です。正確でない場合があります。アレルギーの判断には使わず、必ずお店に確認してください。",
+      "retry": "もう一度試す",
+      "close": "閉じる",
+      "error": {
+        "network": "サーバーに接続できませんでした。通信環境を確認してもう一度お試しください。",
+        "timeout": "説明の生成に時間がかかりすぎました。もう一度お試しください。",
+        "config": "アプリの設定が正しくありません。管理者にお問い合わせください。",
+        "server": "説明を生成できませんでした。もう一度お試しください。"
+      }
+    }
+  },
+  "allergies": {
+    "heading": "食物アレルギー",
+    "description": "該当する食物アレルギーを選択してください。この端末にのみ保存されます。",
+    "save": "保存して次へ",
+    "skip": "スキップ",
+    "settingsLink": "アレルギー設定",
+    "categories": {
+      "seafood": "魚介類",
+      "meat": "肉類",
+      "eggDairy": "卵・乳製品",
+      "fruit": "果物",
+      "nutsLegumes": "ナッツ・豆類",
+      "vegetable": "野菜・きのこ",
+      "other": "その他"
+    },
+    "items": {
+      "shrimp": "えび",
+      "shellfish": "貝類",
+      "crab": "かに",
+      "fish": "魚類",
+      "beef": "牛肉",
+      "chicken": "鶏肉",
+      "egg": "卵",
+      "milk": "乳",
+      "apple": "りんご",
+      "banana": "バナナ",
+      "kiwi": "キウイ",
+      "treeNuts": "木の実(くるみなど)",
+      "peanuts": "ピーナッツ",
+      "lupine": "ルピナス",
+      "soy": "大豆",
+      "celery": "セロリ",
+      "mushroom": "きのこ",
+      "gluten": "グルテン(小麦など)",
+      "gelatin": "ゼラチン"
     }
   }
 }

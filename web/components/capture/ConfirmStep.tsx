@@ -1,29 +1,41 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { useLang } from "@/components/i18n/I18nProvider";
-import { submitPhoto } from "@/lib/capture/submitPhoto";
+import { runAnalysis } from "@/lib/capture/runAnalysis";
+import { hasStoredAllergySelection } from "@/lib/allergens/storage";
 import { useT } from "@/lib/i18n/useT";
 import { useObjectUrl } from "@/lib/hooks/useObjectUrl";
 import { useCaptureStore } from "@/lib/store/useCaptureStore";
 
-type Status = "compressing" | "ready" | "submitting" | "done";
+type Status = "compressing" | "ready" | "submitting";
 
 export function ConfirmStep() {
   const t = useT();
-  const lang = useLang();
-  const router = useRouter();
 
   const croppedImage = useCaptureStore((state) => state.croppedImage);
   const finalImage = useCaptureStore((state) => state.finalImage);
   const setFinalImage = useCaptureStore((state) => state.setFinalImage);
+  const submitErrorReason = useCaptureStore((state) => state.submitErrorReason);
+  const setSubmitErrorReason = useCaptureStore(
+    (state) => state.setSubmitErrorReason,
+  );
   const goToStep = useCaptureStore((state) => state.goToStep);
   const reset = useCaptureStore((state) => state.reset);
 
   const [status, setStatus] = useState<Status>("compressing");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [localErrorMessage, setLocalErrorMessage] = useState<string | null>(
+    null,
+  );
+
+  // Analysis that failed after this step handed off to the first-time
+  // allergy step surfaces here, since the user lands back on "confirm";
+  // derived at render time rather than mirrored into local state.
+  const errorMessage =
+    localErrorMessage ??
+    (submitErrorReason
+      ? t(`capture.confirming.error.${submitErrorReason}`)
+      : null);
 
   useEffect(() => {
     if (!croppedImage) return;
@@ -32,7 +44,7 @@ export function ConfirmStep() {
 
     (async () => {
       setStatus("compressing");
-      setErrorMessage(null);
+      setLocalErrorMessage(null);
 
       try {
         const imageCompression = (await import("browser-image-compression"))
@@ -53,7 +65,7 @@ export function ConfirmStep() {
         setStatus("ready");
       } catch {
         if (cancelled) return;
-        setErrorMessage(t("capture.confirming.errorCompress"));
+        setLocalErrorMessage(t("capture.confirming.errorCompress"));
         setFinalImage(croppedImage);
         setStatus("ready");
       }
@@ -69,20 +81,26 @@ export function ConfirmStep() {
   const handleDecide = async () => {
     const image = finalImage ?? croppedImage;
     if (!image) return;
+
+    // First-time flow: collect allergies before running AI analysis
+    // (allergy-selection.md 3.1). AllergyStep resumes analysis itself once
+    // the user saves or skips.
+    if (!hasStoredAllergySelection()) {
+      goToStep("allergy");
+      return;
+    }
+
     setStatus("submitting");
-    await submitPhoto(image);
-    setStatus("done");
-    setTimeout(() => {
-      // Don't reset() here: it flips `step` back to "capture" while this
-      // component is still mounted on /capture, which briefly swaps in
-      // CaptureStep and fires its auto-open-camera effect before the
-      // navigation below unmounts it. TakePhotoButton resets state at the
-      // start of the next session instead.
-      router.push(`/${lang}`);
-    }, 1000);
+    setLocalErrorMessage(null);
+    setSubmitErrorReason(null);
+    await runAnalysis(image);
+    // Technical failures land back here via submitErrorReason, read above;
+    // success/notFound already moved the store to another step.
+    setStatus("ready");
   };
 
   const handleRedoCrop = () => {
+    setSubmitErrorReason(null);
     goToStep("crop");
   };
 
@@ -91,8 +109,7 @@ export function ConfirmStep() {
     goToStep("capture");
   };
 
-  const isBusy =
-    status === "compressing" || status === "submitting" || status === "done";
+  const isBusy = status === "compressing" || status === "submitting";
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4">
@@ -116,9 +133,9 @@ export function ConfirmStep() {
           {t("capture.confirming.compressing")}
         </p>
       )}
-      {status === "done" && (
-        <p className="text-green-600 dark:text-green-400">
-          {t("capture.confirming.done")}
+      {status === "submitting" && (
+        <p className="text-zinc-600 dark:text-zinc-400">
+          {t("capture.confirming.analyzing")}
         </p>
       )}
       {errorMessage && (
@@ -137,7 +154,7 @@ export function ConfirmStep() {
         <button
           type="button"
           onClick={handleRedoCrop}
-          disabled={status === "submitting" || status === "done"}
+          disabled={status === "submitting"}
           className="text-sm text-zinc-600 underline dark:text-zinc-400"
         >
           {t("capture.confirming.redoCrop")}
@@ -145,7 +162,7 @@ export function ConfirmStep() {
         <button
           type="button"
           onClick={handleRetake}
-          disabled={status === "submitting" || status === "done"}
+          disabled={status === "submitting"}
           className="text-sm text-zinc-600 underline dark:text-zinc-400"
         >
           {t("capture.confirming.retake")}
