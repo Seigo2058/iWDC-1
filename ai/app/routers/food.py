@@ -1,4 +1,6 @@
 import json
+from fastapi import Header
+from typing import Optional
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -27,7 +29,8 @@ def gemini_unavailable_http_error(error: gemini.GeminiUnavailableError) -> HTTPE
 @router.post("/analyze-food")
 async def analyze_food(
     file: UploadFile = File(...),
-    db: AsyncSession = Depends(get_session)
+    db: AsyncSession = Depends(get_session),
+    x_api_key: Optional[str] = Header(None)
 ):
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image.")
@@ -35,6 +38,9 @@ async def analyze_food(
     print("\n[DEBUG] 1. Reading image file...")
     image_bytes = await file.read()
     print(f"[DEBUG] 2. File read successfully! Size: {len(image_bytes) / 1024:.2f} KB")
+
+    actual_api_key = x_api_key if x_api_key else os.getenv("GEMINI_API_KEY")
+    local_client = genai.Client(api_key=actual_api_key)
 
     prompt = """
     You are an expert food classifier and menu translator.
@@ -48,7 +54,9 @@ async def analyze_food(
     
     try:
         print("[DEBUG] 3. Sending image to Gemini (Hybrid Mode)...")
-        response = await gemini.generate_content(
+        
+        response = await local_client.aio.models.generate_content(
+            model='gemini-3.6-flash',
             contents=[
                 prompt,
                 types.Part.from_bytes(data=image_bytes, mime_type=file.content_type)
@@ -115,8 +123,13 @@ async def analyze_food(
         raise HTTPException(status_code=500, detail=f"AI Processing Error: {str(e)}")
 
 @router.post("/ingredient-detail")
-async def get_ingredient_detail(request: IngredientRequest):
+async def get_ingredient_detail(
+    request: IngredientRequest,
+    x_api_key: Optional[str] = Header(None)
+):
     try:
+        actual_api_key = x_api_key if x_api_key else os.getenv("GEMINI_API_KEY")
+        local_client = genai.Client(api_key=actual_api_key)
 
         print(f"\n[DEBUG] 1. Received request - Ingredient: '{request.ingredient}', Language: '{request.language}'")
 
@@ -130,7 +143,10 @@ async def get_ingredient_detail(request: IngredientRequest):
         """
         
         print("[DEBUG] 2. Sending prompt to Gemini...")
-        ai_response = await gemini.generate_content(contents=prompt)
+        ai_response = await local_client.aio.models.generate_content(
+            model='gemini-3.6-flash',
+            contents=prompt
+        )
 
         print("[DEBUG] 3. Gemini has replied!")
         print(f"[DEBUG] Raw AI Output:\n{ai_response.text.strip()}")
