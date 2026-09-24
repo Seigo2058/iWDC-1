@@ -7,8 +7,8 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 
 import {
   CaptureScreen,
-  FrameMessage,
-  MessagePill,
+  CaptureTopBar,
+  RoundOverlayButton,
 } from "@/components/capture/CaptureScreen";
 import { ProgressText } from "@/components/ui/ProgressText";
 import { useLang } from "@/components/i18n/I18nProvider";
@@ -35,11 +35,6 @@ const CAMERA_ERROR_KEYS: Record<CameraErrorReason, string> = {
 type TorchCapabilities = MediaTrackCapabilities & { torch?: boolean };
 type TorchConstraintSet = MediaTrackConstraintSet & { torch?: boolean };
 
-// Dark translucent controls laid over the camera image on PC (Figma: Back,
-// flash).
-const OVERLAY_CLASS =
-  "text-white shadow-[0_0_16px_rgba(0,0,0,0.32)] backdrop-blur-[24px]";
-
 function cameraErrorReason(error: unknown): CameraErrorReason {
   const name = error instanceof DOMException ? error.name : "";
   if (name === "NotAllowedError" || name === "SecurityError") return "permission";
@@ -49,10 +44,10 @@ function cameraErrorReason(error: unknown): CameraErrorReason {
 
 /** Shows the rear camera inside the page and captures a frame from it,
  *  instead of handing off to the phone's own camera app (Figma: camera
- *  screen, phone "User" and PC "MacBook Pro 16' - 2"). On phones the screen
- *  is full-height without the site header: Back and the hint sit above a
- *  green-bordered frame, and the flash joins the shutter row. On PC, Back
- *  and the flash are laid over the frame. Choosing an existing
+ *  screen, phone "User" and PC "MacBook Pro 16' - 2"): Back and the hint
+ *  above the frame (green-bordered on phones), then flash, shutter and
+ *  gallery below it. On phones the screen is full-height without the site
+ *  header. Choosing an existing
  *  photo stays available, and is the way forward when the camera can't be
  *  used (permission denied, no camera, or an insecure/unsupported browser —
  *  getUserMedia needs HTTPS or localhost). */
@@ -220,9 +215,8 @@ export function CaptureStep() {
     router.push(`/${lang}`);
   };
 
-  // One message pill: an error or progress takes the place of the framing
-  // hint. On phones it sits above the frame and always shows something; on
-  // PC it only appears for these, at the bottom of the frame.
+  // One message pill above the frame: an error or progress takes the place
+  // of the framing hint.
   const message =
     errorMessage ??
     (isBusy ? <ProgressText text={t("capture.capturing.converting")} /> : null);
@@ -230,24 +224,20 @@ export function CaptureStep() {
   return (
     <CaptureScreen
       heading={t("capture.capturing.heading")}
-      frameClassName="rounded-[32px] border-4 border-[#19532b] bg-[rgba(41,41,41,0.2)] md:rounded-[80px] md:border-0 md:bg-black md:shadow-[0_0_16px_rgba(0,0,0,0.24)]"
-      phoneTopBar={
-        // Back flush with the frame's left edge; the pill centered on the
-        // screen between two equal columns (Back and an empty one), so a
-        // long message wraps instead of running into the button.
-        <div className="grid grid-cols-[40px_1fr_40px] items-center gap-1.5">
-          <button
-            type="button"
-            onClick={handleBack}
-            aria-label={t("capture.capturing.back")}
-            className="flex size-10 items-center justify-center rounded-full bg-black/50 shadow-[0_0_4px_rgba(0,0,0,0.32)] backdrop-blur-[6px] transition-opacity hover:opacity-85"
-          >
-            <Image src="/images/icons/arrow-left.svg" alt="" width={26} height={26} className="size-[26px]" />
-          </button>
-          <MessagePill alert={errorMessage !== null} className="justify-self-center">
-            {message ?? t("capture.capturing.hint")}
-          </MessagePill>
-        </div>
+      frameClassName="rounded-[32px] border-4 border-[#19532b] bg-[rgba(41,41,41,0.2)] md:rounded-[40px] md:border-0 md:bg-black md:shadow-[0_0_16px_rgba(0,0,0,0.24)]"
+      topBar={
+        <CaptureTopBar
+          alert={errorMessage !== null}
+          button={
+            <RoundOverlayButton
+              label={t("capture.capturing.back")}
+              onClick={handleBack}
+              icon={<Image src="/images/icons/arrow-left.svg" alt="" width={26} height={26} className="size-[26px] md:size-[37px]" />}
+            />
+          }
+        >
+          {message ?? t("capture.capturing.hint")}
+        </CaptureTopBar>
       }
       frame={
         <>
@@ -285,45 +275,11 @@ export function CaptureStep() {
               )}
             </div>
           )}
-
-          <div className="absolute inset-x-9 top-[33px] flex items-start justify-between max-md:hidden">
-            <button
-              type="button"
-              onClick={handleBack}
-              className={`${OVERLAY_CLASS} flex items-center rounded-full bg-black/50 py-5 pl-5 pr-[34px] text-[32px] font-medium transition-opacity hover:opacity-85`}
-            >
-              <Image src="/images/icons/arrow-left.svg" alt="" width={49} height={49} className="size-[49px]" />
-              {t("capture.capturing.back")}
-            </button>
-
-            {torch !== null && (
-              <button
-                type="button"
-                onClick={handleToggleTorch}
-                aria-pressed={torch}
-                aria-label={t("capture.capturing.flash")}
-                className={`${OVERLAY_CLASS} flex size-[98px] items-center justify-center rounded-full transition-colors ${torch ? "bg-[#ff8500]/90" : "bg-black/50"}`}
-              >
-                {torch ? (
-                  <Zap aria-hidden="true" className="size-11 fill-current" />
-                ) : (
-                  <Image src="/images/icons/flash-slash.svg" alt="" width={53} height={53} className="size-[53px]" />
-                )}
-              </button>
-            )}
-          </div>
-
-          {message && (
-            <FrameMessage alert={errorMessage !== null} only="pc">
-              {message}
-            </FrameMessage>
-          )}
         </>
       }
       controls={
-        // Phone: flash, shutter, gallery. PC: gallery, shutter (the flash is
-        // over the frame there).
-        <div className="flex items-center gap-[22px] md:gap-4">
+        // Flash, shutter, gallery, on phones and PC alike.
+        <div className="flex items-center gap-[22px] md:gap-[72px]">
           {/* Kept in place while unavailable (most desktop webcams and iOS
               have no controllable flash) so the shutter stays centered. */}
           <button
@@ -332,12 +288,12 @@ export function CaptureStep() {
             disabled={torch === null}
             aria-pressed={torch ?? false}
             aria-label={t("capture.capturing.flash")}
-            className={`flex size-[54px] items-center justify-center rounded-full text-white shadow-[0_0_9px_rgba(0,0,0,0.32)] backdrop-blur-[13.5px] transition-colors md:hidden ${torch ? "bg-[#ff8500]/90" : "bg-black/50"} ${torch === null ? "invisible" : ""}`}
+            className={`flex size-[54px] items-center justify-center rounded-full text-white shadow-[0_0_9px_rgba(0,0,0,0.32)] backdrop-blur-[13.5px] transition-colors md:size-[70px] ${torch ? "bg-[#ff8500]/90" : "bg-black/50"} ${torch === null ? "invisible" : ""}`}
           >
             {torch ? (
-              <Zap aria-hidden="true" className="size-6 fill-current" />
+              <Zap aria-hidden="true" className="size-6 fill-current md:size-8" />
             ) : (
-              <Image src="/images/icons/flash-slash.svg" alt="" width={29} height={29} className="size-[29.25px]" />
+              <Image src="/images/icons/flash-slash.svg" alt="" width={29} height={29} className="size-[29.25px] md:size-[38px]" />
             )}
           </button>
           <button
@@ -345,9 +301,9 @@ export function CaptureStep() {
             onClick={handleShutter}
             disabled={camera.status !== "live" || isBusy}
             aria-label={t("capture.capturing.shutter")}
-            className="flex h-[66px] w-[135px] items-center justify-center rounded-[20px] bg-[#ff8500] transition active:scale-[0.97] disabled:opacity-50 md:h-[120px] md:w-[308px] md:rounded-[37px]"
+            className="flex h-[66px] w-[135px] items-center justify-center rounded-[20px] bg-[#ff8500] transition active:scale-[0.97] disabled:opacity-50 md:h-[90px] md:w-[263px]"
           >
-            <Image src="/images/icons/camera-shutter.svg" alt="" width={41} height={41} className="size-[41px] md:size-[63px]" />
+            <Image src="/images/icons/camera-shutter.svg" alt="" width={41} height={41} className="size-[41px] md:size-14" />
           </button>
           <input
             ref={inputRef}
@@ -361,9 +317,9 @@ export function CaptureStep() {
             onClick={() => inputRef.current?.click()}
             disabled={isBusy}
             aria-label={t("capture.capturing.chooseFromLibrary")}
-            className="flex size-[54px] items-center justify-center rounded-full bg-black/50 shadow-[0_0_9px_rgba(0,0,0,0.32)] backdrop-blur-[13.5px] transition-opacity hover:opacity-85 disabled:opacity-50 md:-order-1 md:h-[120px] md:w-[146px] md:bg-black/[.32] md:shadow-none md:backdrop-blur-[18px]"
+            className="flex size-[54px] items-center justify-center rounded-full bg-black/50 shadow-[0_0_9px_rgba(0,0,0,0.32)] backdrop-blur-[13.5px] transition-opacity hover:opacity-85 disabled:opacity-50 md:size-[76px]"
           >
-            <Image src="/images/icons/gallery-add-light.svg" alt="" width={28} height={28} className="size-7 md:size-[52px]" />
+            <Image src="/images/icons/gallery-add-light.svg" alt="" width={28} height={28} className="size-7 md:size-10" />
           </button>
         </div>
       }

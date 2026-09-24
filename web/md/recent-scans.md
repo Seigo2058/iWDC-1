@@ -50,6 +50,7 @@
 | `foods` | 配列 | その回に見つかった料理（解析結果の並び順）。1品以上 |
 | `foods[].foodId` | number | `food_items.food_id`。料理詳細を開くときの取得キー |
 | `foods[].nameEn` / `nameTh` / `nameJp` | string | 3言語の料理名（`food_items.name_en` / `name_th` / `name_jp`）。現在の表示言語の名前を出す |
+| `foods[].descriptionEn` / `descriptionTh` / `descriptionJp` | string | 3言語の料理の説明文（`food_items.description`）。料理一覧ページ（4.5）のカードに現在の表示言語の説明文を出す（空なら英語）。説明文が無い料理は `""`。この項目が無い履歴（説明文を保存する前の履歴）は、4.5 の表示時に一度だけDBから取得して書き足す |
 | `foods[].imageUrl` | string \| null | DBの参考写真の URL（`food_items.image_url`）。空なら `null` |
 
 ```json
@@ -58,8 +59,8 @@
     "id": "mu121tek-70p7b4",
     "scannedAt": "2026-09-14T09:43:00.000Z",
     "foods": [
-      { "foodId": 1, "nameEn": "Pad Thai", "nameTh": "ผัดไทย", "nameJp": "パッタイ", "imageUrl": "https://..." },
-      { "foodId": 2, "nameEn": "Tom Yum Goong", "nameTh": "ต้มยำกุ้ง", "nameJp": "トムヤムクン", "imageUrl": "https://..." }
+      { "foodId": 1, "nameEn": "Pad Thai", "nameTh": "ผัดไทย", "nameJp": "パッタイ", "descriptionEn": "A famous Thai stir-fried rice noodle dish...", "descriptionTh": "...", "descriptionJp": "...", "imageUrl": "https://..." },
+      { "foodId": 2, "nameEn": "Tom Yum Goong", "nameTh": "ต้มยำกุ้ง", "nameJp": "トムヤムクン", "descriptionEn": "...", "descriptionTh": "...", "descriptionJp": "...", "imageUrl": "https://..." }
     ]
   },
   {
@@ -166,16 +167,18 @@
 ### 4.5 複数品のスキャンの料理一覧ページ
 
 - 複数品のカードを押すと `/[lang]/scans/[scanId]` に移動し、そのスキャンで見つかった料理を一覧で表示する。
-- 一覧は Local Storage の履歴だけで表示し、APIは呼ばない（料理詳細を開いたときに初めてDBから取得する）。
+- 見た目は、撮影直後に複数の料理が見つかったときの一覧と同じデザインにする（Figma: スマホ `Information`（408:3298）/ PC `MacBook Pro 16' - 10`（501:5813）。共通部品 `DishCardList`）。
+- カードは Local Storage の履歴（料理名・説明文・写真、3.2）だけで表示し、APIは呼ばない。
+- 例外として、説明文を保存する前の履歴（`descriptionEn` などが無い料理）だけは、その料理を `GET /api/foods/{food_id}`（DB参照のみ、AIは使わない）で一度だけ取得し、説明文を履歴に書き足す（取得中は薄い仮の線、取得できなかったときは説明文なし）。書き足した後は再び取得しない。
 
 | 要素 | 内容 |
 | --- | --- |
-| 上部 | 「ホームに戻る」 |
-| 見出し | 料理の数（ja: `3品の料理` / en: `3 dishes` / th: `อาหาร 3 รายการ`）、スキャン日時（4.3）、「料理をタップすると詳細を表示します。」 |
-| 各行 | 参考写真のサムネイル（4.2 と同じ代替表示）と料理名。押すとその料理の料理詳細ページ（4.4） |
-| 履歴に無い `scanId` | 「このスキャン履歴は見つかりませんでした。」（削除された、別の端末の URL を開いた等） |
+| 見出し | 「見つかった料理 (3)」（en: `Detected Foods (3)` / th: `อาหารที่พบ (3)`）、その下にスキャン日時（4.3）と「料理の情報をチェックしましょう。」 |
+| カード | 参考写真（4.2 と同じ代替表示）・料理名・説明文。スマホは1列、PCは2列。押すとその料理の料理詳細ページ（4.4）。URL に一覧のスキャンID（`?scan=<scanId>`）を付けて開く |
+| 戻る | 画面下に固定したグレーの「戻る」ボタン。開いたときの画面（通常はホーム）に戻る。直接開いたときはホームへ |
+| 履歴に無い `scanId` | エラー画面（404「スキャン履歴が見つかりません」）。削除された、別の端末の URL を開いた等 |
 
-- 料理詳細ページからブラウザの「戻る」で一覧に戻れる。
+- 一覧から開いた料理詳細ページには、「ホーム」の横に「戻る」ボタンを表示し、押すとこの一覧に戻る（`?scan` が付いているときだけ。ブラウザの「戻る」でも戻れる）。
 
 ## 5. 新規API（backend）
 

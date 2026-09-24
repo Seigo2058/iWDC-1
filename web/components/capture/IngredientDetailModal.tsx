@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { useLang } from "@/components/i18n/I18nProvider";
@@ -14,6 +14,14 @@ import type {
   IngredientDetail,
   IngredientDetailFailureReason,
 } from "@/lib/ingredient/types";
+
+// The "What is it?" / "Made of" boxes (Figma: gray rounded cards). From md
+// the whole popup is the phone design scaled ~1.455x, the ratio the dish
+// page's PC cards use, so it matches the page it opens over.
+const SECTION_CLASS =
+  "flex flex-col gap-2 rounded-2xl bg-[#f4f4f4] p-4 md:gap-3 md:rounded-[23px] md:p-[23px]";
+const SECTION_TITLE_CLASS = "text-xl leading-5 font-medium md:text-[29px] md:leading-[29px]";
+const SECTION_BODY_CLASS = "text-base leading-5 break-words md:text-[23.3px] md:leading-[29px]";
 
 type State =
   | { status: "loading" }
@@ -89,6 +97,8 @@ export function IngredientDetailModal({
   const handleRetry = () => setState({ status: "loading" });
 
   return (
+    // Centered on every screen size, over a dimmed page (Figma: ingredient
+    // popup, "Frame 68"; 348px wide on phones, 506px from md).
     <dialog
       ref={dialogRef}
       aria-labelledby={titleId}
@@ -103,73 +113,91 @@ export function IngredientDetailModal({
         // panel's own content is inside the inner div.
         if (event.target === event.currentTarget) close();
       }}
-      className="mx-0 mt-auto mb-0 w-full max-w-full rounded-t-2xl bg-background p-0 text-foreground backdrop:bg-black/40 sm:m-auto sm:max-w-md sm:rounded-2xl"
+      className="m-auto w-[348px] max-w-[calc(100%-2rem)] md:w-[506px] overflow-visible bg-transparent p-0 backdrop:bg-black/50"
     >
-      <div className="flex max-h-[80vh] flex-col gap-4 overflow-y-auto p-5">
-        <header className="flex items-start justify-between gap-3">
-          <h2 id={titleId} className="text-xl font-semibold">
-            {ingredient}
-          </h2>
-          <button
-            type="button"
-            onClick={close}
-            aria-label={t("capture.ingredient.close")}
-            className="-m-1 shrink-0 rounded-full p-1 text-zinc-500 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
+      <div className="flex max-h-[calc(100dvh-2rem)] flex-col gap-2 overflow-y-auto rounded-3xl bg-white px-[13px] pb-[15px] pt-3 font-brand md:gap-3 md:rounded-[35px] md:px-[19px] md:pb-[22px] md:pt-[17px] text-[#564334] shadow-[0_0_4px_rgba(0,0,0,0.32),0_1px_0.5px_rgba(0,0,0,0.05),0_4px_6px_rgba(0,0,0,0.03),0_12px_16px_rgba(0,0,0,0.02)]">
+        <header className="flex items-start justify-between gap-2 md:gap-3">
+          {/* A long name wraps inside the chip instead of pushing the AI mark
+              and the close button out. */}
+          <h2
+            id={titleId}
+            className="min-h-[38px] min-w-0 rounded-[19px] border-[0.5px] border-[#564334] bg-[#f4f4f4] px-[12.5px] py-[9px] text-base leading-[19.6px] font-medium break-words shadow-[0_1px_1px_rgba(0,0,0,0.05)] md:min-h-[55px] md:rounded-[27.5px] md:border-[0.73px] md:px-[18px] md:py-[13px] md:text-[23.3px] md:leading-[28.5px]"
           >
-            <X aria-hidden="true" size={20} />
-          </button>
+            {/* Names like "meat (pork/chicken/seafood)" have no spaces to
+                wrap at, so they may also break after a slash. */}
+            {ingredient.replace(/\//g, "/\u200b")}
+          </h2>
+          <div className="flex shrink-0 items-center gap-2 md:gap-3">
+            {/* The explanation is written by AI; the disclaimer below says
+                what that means. */}
+            <span className="flex h-[38px] w-[72px] items-center gap-2 rounded-full bg-[#ff8500] px-[9px] text-sm leading-[15px] font-medium text-white uppercase md:h-[55px] md:w-[105px] md:gap-3 md:px-[13px] md:text-[20.4px] md:leading-[22px]">
+              <Image src="/images/icons/ai-sparkle.svg" alt="" width={24} height={24} className="size-6 md:size-[35px]" />
+              AI
+            </span>
+            <button
+              type="button"
+              onClick={close}
+              aria-label={t("capture.ingredient.close")}
+              className="size-[38px] rounded-full transition-opacity hover:opacity-70 md:size-[55px]"
+            >
+              <Image src="/images/icons/close-circle.svg" alt="" width={38} height={38} className="size-full" />
+            </button>
+          </div>
         </header>
 
-        <div aria-live="polite" className="flex flex-col gap-4">
+        <div aria-live="polite" className="flex flex-col gap-2 md:gap-3">
           {state.status === "loading" && (
-            <div className="flex flex-col gap-2">
-              <div className="h-4 w-full animate-pulse rounded bg-black/[.08] dark:bg-white/[.12]" />
-              <div className="h-4 w-5/6 animate-pulse rounded bg-black/[.08] dark:bg-white/[.12]" />
-              <div className="h-4 w-2/3 animate-pulse rounded bg-black/[.08] dark:bg-white/[.12]" />
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <section className={SECTION_CLASS}>
+              <h3 className={SECTION_TITLE_CLASS}>{t("capture.ingredient.whatIsIt")}</h3>
+              <div className="flex flex-col gap-2 py-0.5 md:gap-3 md:py-1" aria-hidden="true">
+                <div className="h-3.5 w-full animate-pulse rounded bg-black/[.08] md:h-5" />
+                <div className="h-3.5 w-5/6 animate-pulse rounded bg-black/[.08] md:h-5" />
+                <div className="h-3.5 w-2/3 animate-pulse rounded bg-black/[.08] md:h-5" />
+              </div>
+              <p className="text-sm md:text-[20.4px]">
                 <ProgressText text={t("capture.ingredient.loading")} />
               </p>
-            </div>
+            </section>
           )}
 
           {state.status === "success" && (
             <>
-              <section className="flex flex-col gap-1">
-                <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
-                  {t("capture.ingredient.whatIsIt")}
-                </h3>
-                <p className="leading-relaxed">{state.detail.whatIsIt}</p>
+              <section className={SECTION_CLASS}>
+                <h3 className={SECTION_TITLE_CLASS}>{t("capture.ingredient.whatIsIt")}</h3>
+                <p className={SECTION_BODY_CLASS}>{state.detail.whatIsIt}</p>
               </section>
               {state.detail.madeOf && (
-                <section className="flex flex-col gap-1">
-                  <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
-                    {t("capture.ingredient.madeOf")}
-                  </h3>
-                  <p className="leading-relaxed">{state.detail.madeOf}</p>
+                <section className={`${SECTION_CLASS} pr-[42px] md:pr-[61px]`}>
+                  <h3 className={SECTION_TITLE_CLASS}>{t("capture.ingredient.madeOf")}</h3>
+                  <p className={SECTION_BODY_CLASS}>{state.detail.madeOf}</p>
                 </section>
               )}
             </>
           )}
 
           {state.status === "error" && (
-            <div className="flex flex-col items-start gap-3">
-              <p className="text-red-600 dark:text-red-400">
+            <section className={`${SECTION_CLASS} items-start`}>
+              <p role="alert" className="text-base leading-5 text-[#c82323] md:text-[23.3px] md:leading-[29px]">
                 {t(`capture.ingredient.error.${state.reason}`)}
               </p>
-              {state.reason !== "config" && (
+              {/* No retry where it can't help: a misconfigured app, or a
+                  request limit that only resets later in the day. */}
+              {state.reason !== "config" && state.reason !== "quota" && (
                 <button
                   type="button"
                   onClick={handleRetry}
-                  className="rounded-full border border-black/[.08] px-5 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                  className="rounded-full border border-[#564334] bg-white px-4 py-1.5 text-sm font-medium transition-colors hover:bg-[#ebebeb] md:border-[1.5px] md:px-6 md:py-2 md:text-[20.4px]"
                 >
                   {t("capture.ingredient.retry")}
                 </button>
               )}
-            </div>
+            </section>
           )}
         </div>
 
-        <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+        {/* Always shown (ingredient-detail.md 4.2): the text is AI-written and
+            is not a basis for allergy decisions. */}
+        <p className="px-1 text-xs leading-4 text-[#6a6a6a] md:px-1.5 md:text-[17.5px] md:leading-[23px]">
           {t("capture.ingredient.disclaimer")}
         </p>
       </div>

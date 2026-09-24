@@ -13,6 +13,12 @@ export interface RecentScanFood {
   nameEn: string;
   nameTh: string;
   nameJp: string;
+  /** The description in each language ("" when the dish has none), for the
+   *  multi-dish list's cards. All null in history saved before descriptions
+   *  were kept (see `hasRecentScanDescription`). */
+  descriptionEn: string | null;
+  descriptionTh: string | null;
+  descriptionJp: string | null;
   imageUrl: string | null;
 }
 
@@ -29,6 +35,23 @@ export function recentScanFoodName(food: RecentScanFood, lang: Locale): string {
   if (lang === "ja") return food.nameJp;
   if (lang === "th") return food.nameTh;
   return food.nameEn;
+}
+
+/** Whether the description was saved (history from before descriptions
+ *  were kept has none, and is filled in by `saveRecentScanDescription`). */
+export function hasRecentScanDescription(food: RecentScanFood): boolean {
+  return food.descriptionEn !== null;
+}
+
+/** The description in the display language, falling back to English like
+ *  the dish page does; null when there is none (or none saved). */
+export function recentScanFoodDescription(
+  food: RecentScanFood,
+  lang: Locale,
+): string | null {
+  const localized =
+    lang === "ja" ? food.descriptionJp : lang === "th" ? food.descriptionTh : food.descriptionEn;
+  return localized || food.descriptionEn || null;
 }
 
 function parse(raw: string | null): RecentScan[] {
@@ -71,12 +94,26 @@ function toRecentScan(value: unknown): RecentScan | null {
 function toRecentScanFood(raw: Record<string, unknown>): RecentScanFood | null {
   const nameEn = text(raw.nameEn);
   if (!Number.isInteger(raw.foodId) || !nameEn) return null;
+  // "" is a saved-but-empty description; a missing field means it was
+  // never saved (older history).
+  const saved = typeof raw.descriptionEn === "string";
   return {
     foodId: raw.foodId as number,
     nameEn,
     nameTh: text(raw.nameTh) ?? nameEn,
     nameJp: text(raw.nameJp) ?? nameEn,
+    descriptionEn: saved ? (raw.descriptionEn as string) : null,
+    descriptionTh: saved ? (typeof raw.descriptionTh === "string" ? raw.descriptionTh : "") : null,
+    descriptionJp: saved ? (typeof raw.descriptionJp === "string" ? raw.descriptionJp : "") : null,
     imageUrl: text(raw.imageUrl),
+  };
+}
+
+function descriptionFields(food: FoodData) {
+  return {
+    descriptionEn: food.description.en,
+    descriptionTh: food.description.th,
+    descriptionJp: food.description.jp,
   };
 }
 
@@ -121,6 +158,7 @@ export function saveRecentScan(foods: FoodData[], scannedAt: string): void {
             nameEn: food.nameEn,
             nameTh: food.nameTh,
             nameJp: food.nameJp,
+            ...descriptionFields(food),
             imageUrl: food.imageUrl,
           },
         ],
@@ -136,6 +174,23 @@ export function saveRecentScan(foods: FoodData[], scannedAt: string): void {
   );
   const entry: RecentScan = { id: newScanId(), scannedAt, foods: scanFoods };
   write([entry, ...others].slice(0, MAX_SCANS));
+}
+
+/** Saves a dish's description (as just loaded from the database) into
+ *  every scan holding it that lacks one — history saved before descriptions
+ *  were kept — so it is loaded only once. */
+export function saveRecentScanDescription(food: FoodData): void {
+  if (typeof window === "undefined" || food.foodId === null) return;
+  let changed = false;
+  const next = read().map((scan) => ({
+    ...scan,
+    foods: scan.foods.map((saved) => {
+      if (saved.foodId !== food.foodId || hasRecentScanDescription(saved)) return saved;
+      changed = true;
+      return { ...saved, ...descriptionFields(food) };
+    }),
+  }));
+  if (changed) write(next);
 }
 
 /** Drops a dish the database no longer has from every scan, and any scan

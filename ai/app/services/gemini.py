@@ -5,6 +5,7 @@ individual models are sometimes overloaded, so when one model cannot answer
 right now the same request is retried on the next model in the list.
 """
 import asyncio
+import hashlib
 import os
 import time
 from functools import cache
@@ -52,6 +53,11 @@ DEFAULT_RETRY_SECONDS = 60
 # Overload was seen lasting well over a minute; rechecking every minute made
 # most scans pay the timeout of the busy model first again.
 BUSY_RETRY_SECONDS = 10 * 60
+# ...but when every model is marked busy, they are retried anyway (see
+# generate_content) as long as the request is younger than this, so the last
+# try (up to ATTEMPT_TIMEOUT_SECONDS) still ends within the web app's 20 s
+# ingredient-detail timeout.
+LAST_RESORT_BUDGET_SECONDS = 12
 
 QUOTA = "quota"
 BUSY = "busy"
@@ -77,9 +83,18 @@ class GeminiUnavailableError(Exception):
 
 
 @cache
-def _client() -> genai.Client:
-    # Created on first use so ai/.env has been loaded by then.
-    return genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+def _client(api_key: str | None = None) -> genai.Client:
+    # Created on first use so ai/.env has been loaded by then; one per key
+    # (the default one from ai/.env, or a caller's own key).
+    return genai.Client(api_key=api_key or os.getenv("GEMINI_API_KEY"))
+
+
+def _slot(model: str, api_key: str | None) -> str:
+    # Request limits belong to a key, so a caller's own key keeps its own
+    # cooldowns instead of sharing (and spending) the default key's.
+    if not api_key:
+        return model
+    return f"{model}#{hashlib.sha256(api_key.encode()).hexdigest()[:12]}"
 
 
 def _models() -> list[str]:
@@ -93,60 +108,101 @@ def _cool_down(model: str, seconds: float, reason: str, message: str) -> None:
 
 
 async def generate_content(
-    contents, config: types.GenerateContentConfig | None = None
+    contents,
+    config: types.GenerateContentConfig | None = None,
+    api_key: str | None = None,
 ) -> types.GenerateContentResponse:
     """Like `client.aio.models.generate_content`, but moves on to the next model
     on 429 (request limit), 503 (overloaded), no answer within
     ATTEMPT_TIMEOUT_SECONDS, or 404 (model retired). Other errors are raised
-    as-is. Raises GeminiUnavailableError when no model is left."""
-    last_error: Exception | None = None
+    as-is. Raises GeminiUnavailableError when no model is left. `api_key`
+    uses a caller's own key (the routes' X-API-Key header) instead of the
+    one in ai/.env."""
+    started = time.time()
     models = _models()
+    tried: set[str] = set()
+    last_error: Exception | None = None
 
-    for model in models:
-        if model in _unavailable or _cooldowns.get(model, (0, ""))[0] > time.time():
-            continue
-
+    async def attempt(model: str) -> types.GenerateContentResponse | None:
+        nonlocal last_error
+        tried.add(model)
+        slot = _slot(model, api_key)
         try:
-            response = await _generate_on(model, contents, config)
+            response = await _generate_on(model, contents, config, api_key)
         except TimeoutError as error:
-            _cool_down(model, BUSY_RETRY_SECONDS, BUSY,
+            _cool_down(slot, BUSY_RETRY_SECONDS, BUSY,
                        f"did not answer within {ATTEMPT_TIMEOUT_SECONDS}s")
             last_error = error
-            continue
+            return None
         except errors.APIError as error:
             if error.code == 429:
-                _cool_down(model, _retry_after_seconds(error), QUOTA,
+                _cool_down(slot, _retry_after_seconds(error), QUOTA,
                            "hit its request limit")
             elif error.code == 503:
-                _cool_down(model, BUSY_RETRY_SECONDS, BUSY, "is overloaded (503)")
+                _cool_down(slot, BUSY_RETRY_SECONDS, BUSY, "is overloaded (503)")
             elif error.code == 404:
                 _unavailable.add(model)
                 print(f"[GEMINI] {model} is not available (404); trying the next model.")
             else:
                 raise
             last_error = error
-            continue
-
+            return None
+        _cooldowns.pop(slot, None)
         print(f"[GEMINI] Answered by {model}")
         return response
 
+    def cooling(model: str) -> tuple[float, str] | None:
+        until, reason = _cooldowns.get(_slot(model, api_key), (0, ""))
+        return (until, reason) if until > time.time() else None
+
+    for model in models:
+        if model in _unavailable or cooling(model):
+            continue
+        response = await attempt(model)
+        if response is not None:
+            return response
+
+    # Last resort: every model left is only cooling down as "busy". Overload
+    # is often momentary, and with every model marked busy after one bad
+    # spell, requests were refused for BUSY_RETRY_SECONDS without a single
+    # call while some models had long recovered (2026-09-16). So they are
+    # tried anyway, soonest to come back first, while the web app still
+    # waits for an answer. Models out of quota stay skipped (they would 429).
+    busy = sorted(
+        (m for m in models
+         if m not in _unavailable and m not in tried
+         and (state := cooling(m)) and state[1] == BUSY),
+        key=lambda m: cooling(m)[0],
+    )
+    for model in busy:
+        if time.time() - started > LAST_RESORT_BUDGET_SECONDS:
+            break
+        print(f"[GEMINI] Retrying {model} although it was marked busy.")
+        response = await attempt(model)
+        if response is not None:
+            return response
+
     now = time.time()
-    cooling = [reason for m, (until, reason) in _cooldowns.items()
-               if m in models and until > now]
-    if not cooling:
+    slots = {_slot(m, api_key) for m in models}
+    reasons = [reason for s, (until, reason) in _cooldowns.items()
+               if s in slots and until > now]
+    if not reasons:
         raise RuntimeError(f"No usable Gemini model in {models}") from last_error
     raise GeminiUnavailableError(
-        quota_exhausted=all(reason == QUOTA for reason in cooling)
+        quota_exhausted=all(reason == QUOTA for reason in reasons)
     ) from last_error
 
 
 async def _generate_on(
-    model: str, contents, config: types.GenerateContentConfig | None
+    model: str,
+    contents,
+    config: types.GenerateContentConfig | None,
+    api_key: str | None,
 ) -> types.GenerateContentResponse:
     """One model, at the lowest thinking level it accepts. A caller-supplied
     thinking_config is left untouched."""
     if config is not None and config.thinking_config is not None:
-        return await _attempt(model, contents, config)
+        return await _attempt(model, contents, config, api_key)
 
     index = _thinking_level_index.get(model, 0)
     while True:
@@ -159,7 +215,7 @@ async def _generate_on(
             }
         )
         try:
-            return await _attempt(model, contents, attempt_config)
+            return await _attempt(model, contents, attempt_config, api_key)
         except errors.APIError as error:
             if not (
                 error.code == 400
@@ -173,10 +229,13 @@ async def _generate_on(
 
 
 async def _attempt(
-    model: str, contents, config: types.GenerateContentConfig | None
+    model: str,
+    contents,
+    config: types.GenerateContentConfig | None,
+    api_key: str | None,
 ) -> types.GenerateContentResponse:
     return await asyncio.wait_for(
-        _client().aio.models.generate_content(
+        _client(api_key).aio.models.generate_content(
             model=model, contents=contents, config=config
         ),
         timeout=ATTEMPT_TIMEOUT_SECONDS,

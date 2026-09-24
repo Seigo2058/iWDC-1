@@ -11,9 +11,9 @@ import { useEffect, useRef, useState } from "react";
 
 import {
   CaptureScreen,
+  CaptureTopBar,
   DecisionControls,
-  FrameMessage,
-  MessagePill,
+  RoundOverlayButton,
 } from "@/components/capture/CaptureScreen";
 import { useT } from "@/lib/i18n/useT";
 import { useCaptureStore } from "@/lib/store/useCaptureStore";
@@ -114,9 +114,9 @@ function selectPhotoWithMargin(cropper: CropperJS) {
 
 /** Crop Image (Figma: "Cropped Screen", phone and PC): the photo in a
  *  framed box with an orange-cornered selection; Back returns to the photo
- *  check and the check mark keeps the selection. On phones the screen is
- *  full-height without the site header, Reset and the hint above the
- *  frame; on PC Reset sits over the frame. */
+ *  check and the check mark keeps the selection. Reset and the hint sit
+ *  above the frame; on phones the screen is full-height without the site
+ *  header. */
 export function CropStep() {
   const t = useT();
 
@@ -308,23 +308,20 @@ export function CropStep() {
       heading={t("capture.cropping.heading")}
       className="bg-white md:bg-[#f0f0f0]"
       frameClassName="rounded-[32px] bg-[rgba(41,41,41,0.2)] shadow-[0_0_12px_rgba(0,0,0,0.24)] md:rounded-[40px] md:bg-white md:shadow-[0_0_16px_rgba(0,0,0,0.24)]"
-      phoneTopBar={
-        // Reset flush with the frame's left edge; the pill centered on the
-        // screen between two equal columns, as on the camera screen.
-        <div className="grid grid-cols-[40px_1fr_40px] items-center gap-1.5">
-          <button
-            type="button"
-            onClick={handleReset}
-            disabled={!imageUrl}
-            aria-label={t("capture.cropping.reset")}
-            className="flex size-10 items-center justify-center rounded-full bg-black/50 shadow-[0_0_4px_rgba(0,0,0,0.32)] backdrop-blur-[6px] transition-opacity hover:opacity-85 disabled:opacity-50"
-          >
-            <Image src="/images/icons/rotate-left.svg" alt="" width={21} height={21} className="size-[21.33px]" />
-          </button>
-          <MessagePill alert={errorMessage !== null} className="justify-self-center">
-            {errorMessage ?? t("capture.cropping.hint")}
-          </MessagePill>
-        </div>
+      topBar={
+        <CaptureTopBar
+          alert={errorMessage !== null}
+          button={
+            <RoundOverlayButton
+              label={t("capture.cropping.reset")}
+              onClick={handleReset}
+              disabled={!imageUrl}
+              icon={<Image src="/images/icons/rotate-left.svg" alt="" width={21} height={21} className="size-[21.33px] md:size-[30px]" />}
+            />
+          }
+        >
+          {errorMessage ?? t("capture.cropping.hint")}
+        </CaptureTopBar>
       }
       frame={
         <>
@@ -360,22 +357,6 @@ export function CropStep() {
               />
             )}
           </div>
-          {/* The PC design has no Reset; this one is sized like the camera
-              screen's in-frame buttons there. */}
-          <button
-            type="button"
-            onClick={handleReset}
-            disabled={!imageUrl}
-            className="absolute right-9 top-[33px] flex h-[100px] items-center justify-center gap-4 rounded-full bg-[#433f40] px-[60px] text-[28px] font-medium tracking-[-0.56px] text-white transition-opacity hover:opacity-85 disabled:opacity-50 max-md:hidden"
-          >
-            <Image src="/images/icons/rotate-left.svg" alt="" width={40} height={40} className="size-10" />
-            {t("capture.cropping.reset")}
-          </button>
-          {errorMessage && (
-            <FrameMessage alert only="pc">
-              {errorMessage}
-            </FrameMessage>
-          )}
         </>
       }
       controls={

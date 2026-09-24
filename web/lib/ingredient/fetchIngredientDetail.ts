@@ -1,3 +1,4 @@
+import { aiUnavailableReason } from "@/lib/analyze/aiStatus";
 import { toApiLang } from "@/lib/analyze/localize";
 import type {
   IngredientDetail,
@@ -77,6 +78,8 @@ async function requestIngredientDetail(
     }
 
     if (!response.ok) {
+      const unavailable = aiUnavailableReason(response.status);
+      if (unavailable) return { outcome: "error", reason: unavailable };
       if (response.status === 422) {
         // Only reachable if this client sends a malformed request.
         console.error(

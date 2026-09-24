@@ -1,4 +1,5 @@
 import { asRecord, toFoodData } from "@/lib/analyze/parseFood";
+import { aiUnavailableReason } from "@/lib/analyze/aiStatus";
 import type { AnalyzeResult, FoodData } from "@/lib/analyze/types";
 
 // Same-origin path; next.config.ts rewrites it to the FastAPI backend.
@@ -38,7 +39,7 @@ export async function submitPhoto(image: Blob): Promise<AnalyzeResult> {
   // 400 / 422 / 500 are the documented technical failures
   // (connect-aisystem.md 3.5); a down backend surfaces here too via the proxy.
   if (!response.ok) {
-    return { outcome: "error", reason: "server" };
+    return { outcome: "error", reason: aiUnavailableReason(response.status) ?? "server" };
   }
 
   // ai/app/routers/food.py can recognize several dishes in one photo (a menu,

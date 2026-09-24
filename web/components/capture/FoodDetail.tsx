@@ -16,6 +16,8 @@ import {
   subscribeAllergySelection,
 } from "@/lib/allergens/storage";
 import {
+  audienceGroups,
+  countryName,
   foodIngredients,
   foodName,
   localizedText,
@@ -42,8 +44,26 @@ const CHILIES: Record<SpicyLevel, number> = {
   "Very Spicy": 3,
 };
 
-/** One white rounded card of the detail, with its icon and title. */
-function InfoCard({
+/** The page's layout, shared with FoodDetailSkeleton so the loading
+ *  placeholder matches it: the page, its photo-card + cards grid, the photo
+ *  card, its photo, the name/description area below it, and the card
+ *  column. */
+export const FOOD_DETAIL_LAYOUT = {
+  page: "flex flex-1 flex-col bg-[#f0f0f0] px-gutter pb-10 pt-[30px] font-brand md:h-[calc(100dvh-var(--site-header-height))] md:flex-none md:overflow-y-auto md:pb-16 md:pt-[55px]",
+  grid: "grid gap-[19px] md:grid-cols-[859fr_512fr] md:items-start md:gap-[37px]",
+  photoCard:
+    "overflow-hidden rounded-[32px] border border-[rgba(86,67,52,0.16)] bg-white md:sticky md:top-0 md:flex md:max-h-(--photo-card-max-h) md:flex-col md:rounded-[48px] md:border-0 md:px-[19px] md:pt-[23px] md:[--photo-card-max-h:calc(100dvh-var(--site-header-height)-55px-4rem)]",
+  photo:
+    "aspect-[351/310] w-full rounded-t-3xl shadow-[0_1px_1px_rgba(0,0,0,0.05),0_4px_12px_rgba(0,0,0,0.03),0_12px_32px_rgba(0,0,0,0.02)] md:aspect-[821/617] md:min-h-0 md:rounded-3xl",
+  photoText:
+    "px-[25px] pb-[25px] pt-6 md:max-h-[calc(var(--photo-card-max-h)*0.6)] md:shrink-0 md:overflow-y-auto md:px-10 md:pb-12 md:pt-10",
+  name: "text-2xl font-medium break-words text-[#422f11] md:text-[35.9px]",
+  cards: "flex flex-col gap-[19px] md:gap-[27.6px]",
+} as const;
+
+/** One white rounded card of the detail, with its icon and title (also
+ *  used by FoodDetailSkeleton). */
+export function InfoCard({
   icon,
   title,
   className = "",
@@ -68,12 +88,13 @@ function InfoCard({
 }
 
 const CHIP_CLASS =
-  "rounded-full border-[0.5px] border-[#564334] bg-[#f4f4f4] px-[12.5px] pb-[5px] pt-[3.5px] text-sm leading-5 tracking-[-0.28px] text-[#564334] shadow-[0_1px_1px_rgba(0,0,0,0.05)] md:border-[0.73px] md:px-[18px] md:pb-[7.4px] md:pt-[5px] md:text-[20.4px] md:leading-[28.5px] md:tracking-normal";
+  "rounded-full border-[0.5px] border-[#564334] bg-[#f4f4f4] px-[12.5px] pb-[5px] pt-[3.5px] text-sm leading-5 tracking-[-0.28px] text-[#564334] shadow-[0_1px_1px_rgba(0,0,0,0.05)] md:text-base md:tracking-[-0.32px]";
 
 /** A dish's details (Figma: phone "Information" / PC "MacBook Pro 16' - 8"):
  *  the photo with name and description, then cards for ingredients and
- *  allergens, spiciness, how to eat, nutrition and the source — one column
- *  on phones; on PC the photo card on the left and the cards on the right.
+ *  allergens (with where the dish is from), spiciness, who it suits, how to
+ *  eat, nutrition and the source — one column on phones; on PC the photo
+ *  card on the left and the cards on the right.
  *  On PC the screen below the header scrolls on its own, with the photo card
  *  held in place (shrinking its photo to fit the screen's height) while the
  *  cards scroll past. Home (and Back, when given) at the end. Sections
@@ -111,6 +132,15 @@ export function FoodDetail({ food, capturedPhotoUrl, onBack }: FoodDetailProps) 
   const description = localizedText(food.description, lang);
   const howToEat = localizedText(food.howToEat, lang);
   const ingredients = foodIngredients(food, lang);
+  // One pill per group ("Adult", "Child"); a value the app doesn't know is
+  // shown as is.
+  const audiencePills = food.audience
+    ? (audienceGroups(food.audience)?.map((group) => ({
+        group,
+        label: t(`capture.result.audience.${group}`),
+      })) ?? [{ group: "adult" as const, label: food.audience }])
+    : [];
+  const country = food.country ? countryName(food.country, lang) : null;
 
   const nutrition = [
     { label: t("capture.result.calories"), value: food.calories, unit: "kcal" },
@@ -121,19 +151,29 @@ export function FoodDetail({ food, capturedPhotoUrl, onBack }: FoodDetailProps) 
   const hasNutrition = nutrition.some((item) => item.value !== null);
 
   return (
-    <div className="flex flex-1 flex-col bg-[#f0f0f0] px-gutter pb-10 pt-[30px] font-brand md:h-[calc(100dvh-var(--site-header-height))] md:flex-none md:overflow-y-auto md:pb-16 md:pt-[55px]">
-      <div className="grid gap-[19px] md:grid-cols-[859fr_512fr] md:items-start md:gap-[37px]">
+    <div className={FOOD_DETAIL_LAYOUT.page}>
+      {/* PC: the cards fade out under the header as they scroll up (Figma:
+          the gradient over the column's top). Pinned to the scroll area's
+          top edge: pulled up into the 55px top padding (mt -55px, then
+          46px + mb 9px = 55px, so the content below stays where the padding
+          puts it), and stuck there with a negative offset, since sticky
+          offsets count from inside the padding. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none sticky top-[-55px] z-10 -mt-[55px] mb-[9px] hidden h-[46px] shrink-0 bg-linear-to-b from-[#f0f0f0] from-40% to-[rgba(240,240,240,0)] md:block"
+      />
+      <div className={FOOD_DETAIL_LAYOUT.grid}>
         {/* At most the height between the screen's top and bottom padding
             (sticky offsets count from inside that padding). The photo gives
             way first; the name and description take up to 60% of it and
             scroll beyond that, so the photo keeps a usable size. */}
-        <section className="overflow-hidden rounded-[32px] border border-[rgba(86,67,52,0.16)] bg-white md:sticky md:top-0 md:flex md:max-h-(--photo-card-max-h) md:flex-col md:rounded-[48px] md:border-0 md:px-[19px] md:pt-[23px] md:[--photo-card-max-h:calc(100dvh-var(--site-header-height)-55px-4rem)]">
+        <section className={FOOD_DETAIL_LAYOUT.photoCard}>
           <DishPhoto
             src={food.imageUrl ?? capturedPhotoUrl ?? null}
-            className="aspect-[351/310] w-full rounded-t-3xl shadow-[0_1px_1px_rgba(0,0,0,0.05),0_4px_12px_rgba(0,0,0,0.03),0_12px_32px_rgba(0,0,0,0.02)] md:aspect-[821/617] md:min-h-0 md:rounded-3xl"
+            className={FOOD_DETAIL_LAYOUT.photo}
           />
-          <div className="px-[25px] pb-[25px] pt-6 md:max-h-[calc(var(--photo-card-max-h)*0.6)] md:shrink-0 md:overflow-y-auto md:px-10 md:pb-12 md:pt-10">
-            <h1 className="text-2xl font-medium break-words text-[#422f11] md:text-[35.9px]">
+          <div className={FOOD_DETAIL_LAYOUT.photoText}>
+            <h1 className={FOOD_DETAIL_LAYOUT.name}>
               {name}
               {thaiName && ` (${thaiName})`}
             </h1>
@@ -145,7 +185,7 @@ export function FoodDetail({ food, capturedPhotoUrl, onBack }: FoodDetailProps) 
           </div>
         </section>
 
-        <div className="flex flex-col gap-[19px] md:gap-[27.6px]">
+        <div className={FOOD_DETAIL_LAYOUT.cards}>
           <InfoCard
             icon="/images/icons/food/shield.svg"
             title={t("capture.result.ingredientsSafety")}
@@ -164,13 +204,13 @@ export function FoodDetail({ food, capturedPhotoUrl, onBack }: FoodDetailProps) 
               </h3>
               {allergens.length > 0 ? (
                 <>
-                  <ul className="mt-2 flex flex-col gap-[5px] text-base font-medium text-[#564334] md:mt-3 md:gap-2 md:text-[23.3px]">
-                    <li className="flex items-center gap-1">
-                      <span aria-hidden="true" className="size-3.5 rounded-full bg-[#c82323] md:size-5" />
+                  <ul className="mt-2 flex flex-col gap-[5px] text-base font-medium text-[#564334] md:mt-3 md:gap-2 md:text-xl">
+                    <li className="flex items-center gap-1 md:gap-2">
+                      <span aria-hidden="true" className="size-3.5 rounded-full bg-[#c82323] md:size-[18px]" />
                       {t("capture.result.yourAllergy")}
                     </li>
-                    <li className="flex items-center gap-1">
-                      <span aria-hidden="true" className="size-3.5 rounded-full bg-[#f0a80d] md:size-5" />
+                    <li className="flex items-center gap-1 md:gap-2">
+                      <span aria-hidden="true" className="size-3.5 rounded-full bg-[#f0a80d] md:size-[18px]" />
                       {t("capture.result.otherAllergen")}
                     </li>
                   </ul>
@@ -247,6 +287,17 @@ export function FoodDetail({ food, capturedPhotoUrl, onBack }: FoodDetailProps) 
                 )}
               </div>
             )}
+
+            {country && (
+              <div className="mt-5 flex items-center justify-between gap-3 pl-[5px] md:mt-7 md:pl-[7px]">
+                <h3 className="text-lg leading-[14.4px] font-bold text-[#564334] uppercase md:text-[26.2px] md:leading-[21px]">
+                  {t("capture.result.country")}
+                </h3>
+                <span className="rounded-full border border-[#564334] bg-white px-[13px] pb-0.5 pt-1 text-sm leading-[14.4px] font-medium text-[#564334] md:border-[1.5px] md:px-[19px] md:pb-[3px] md:pt-1.5 md:text-[20.4px] md:leading-[21px]">
+                  {country}
+                </span>
+              </div>
+            )}
           </InfoCard>
 
           {food.spicyLevel && (
@@ -271,6 +322,24 @@ export function FoodDetail({ food, capturedPhotoUrl, onBack }: FoodDetailProps) 
             </InfoCard>
           )}
 
+          {audiencePills.length > 0 && (
+            <InfoCard icon="/images/icons/food/user-tick.svg" title={t("capture.result.suitableFor")}>
+              {/* Two equal columns even for a single pill, so "Adult" keeps
+                  its place and size whether or not "Child" follows it. Both
+                  groups share one gray style (Figma: Frame 52). */}
+              <ul className="grid grid-cols-2 gap-4 px-4 md:grid-cols-[repeat(2,minmax(0,218px))] md:gap-[9.5px] md:px-0">
+                {audiencePills.map(({ group, label }) => (
+                  <li
+                    key={group}
+                    className="flex h-[34px] items-center justify-center rounded-[10px] bg-[#ebebeb] px-2 text-center text-sm font-medium tracking-[-0.28px] text-[#564334] md:h-[43px] md:text-[22px] md:tracking-normal"
+                  >
+                    {label}
+                  </li>
+                ))}
+              </ul>
+            </InfoCard>
+          )}
+
           {howToEat && (
             <InfoCard icon="/images/icons/food/dining.svg" title={t("capture.result.howToEat")}>
               <p className="px-[5px] text-sm leading-5 tracking-[-0.28px] text-[#6a6a6a] md:px-2 md:text-[20.4px] md:leading-[29px] md:tracking-[-0.41px]">
@@ -285,6 +354,11 @@ export function FoodDetail({ food, capturedPhotoUrl, onBack }: FoodDetailProps) 
               title={t("capture.result.nutrition")}
               className="md:order-[-1]"
             >
+              {/* The values are per serving and estimated (the database
+                  stores ranges), so the card says so under its title. */}
+              <p className="-mt-1 mb-3 text-xs text-[#6a6a6a] md:-mt-2 md:mb-4 md:text-base">
+                {t("capture.result.nutritionNote")}
+              </p>
               <dl className="grid grid-cols-4 gap-1.5 md:gap-2">
                 {nutrition.map((item) => (
                   <div
@@ -292,8 +366,17 @@ export function FoodDetail({ food, capturedPhotoUrl, onBack }: FoodDetailProps) 
                     className="flex h-[85px] flex-col items-center justify-center gap-1 rounded-2xl bg-[#f4f4f4] text-[#564334] md:h-[124px] md:gap-2 md:rounded-[23px]"
                   >
                     <dt className="text-sm uppercase md:text-[20.4px]">{item.label}</dt>
-                    <dd className="flex items-baseline gap-1">
-                      <span className="text-xl font-medium tracking-[-1px] text-[#422f11] md:text-[29px] md:tracking-[-1.45px]">
+                    {/* A range ("350–450") is wider than the single numbers
+                        the design shows, so it is set smaller and the unit
+                        wraps under it when the tile is too narrow. */}
+                    <dd className="flex flex-wrap items-baseline justify-center gap-x-1 px-1 text-center">
+                      <span
+                        className={`font-medium text-[#422f11] ${
+                          item.value?.includes("–")
+                            ? "text-base tracking-[-0.5px] md:text-[23px] md:tracking-[-1px]"
+                            : "text-xl tracking-[-1px] md:text-[29px] md:tracking-[-1.45px]"
+                        }`}
+                      >
                         {item.value ?? "—"}
                       </span>
                       {item.value !== null && (
@@ -309,20 +392,23 @@ export function FoodDetail({ food, capturedPhotoUrl, onBack }: FoodDetailProps) 
           )}
 
           {food.sourceUrl && (
-            <section className="rounded-[32px] border-2 border-[rgba(86,67,52,0.32)] p-[18px] pb-5 md:rounded-[46.5px] md:border-[2.9px] md:p-[26px]">
-              <h2 className="flex items-center gap-1.5 text-[22px] leading-[31.2px] font-medium text-[#564334] md:gap-2 md:text-[30px] md:leading-[45.4px]">
-                <Image src="/images/icons/food/link.svg" alt="" width={18} height={18} className="size-[18px] shrink-0 md:size-8" />
-                {t("capture.result.moreInformation")}
-              </h2>
+            <InfoCard icon="/images/icons/food/link.svg" title={t("capture.result.moreInformation")}>
               <a
                 href={food.sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 flex h-[47px] w-fit items-center justify-center rounded-full bg-[#ff8500] px-[50px] text-xs font-medium tracking-[-0.24px] text-white transition-opacity hover:opacity-90 md:mt-4 md:h-[68px] md:px-[72px] md:text-[17.5px] md:tracking-[-0.35px]"
+                className="mx-auto flex h-[38px] w-full max-w-[279px] items-center justify-center gap-2 rounded-full border border-[#564334] bg-white px-6 text-sm font-medium tracking-[-0.28px] text-[#564334] transition-colors hover:bg-[#f4f4f4] md:mx-1.5 md:h-[68px] md:w-auto md:max-w-none md:gap-3 md:text-[17.5px] md:tracking-[-0.35px]"
               >
                 {t("capture.result.openSource")}
+                <Image
+                  src="/images/icons/food/arrow-up-right.svg"
+                  alt=""
+                  width={12}
+                  height={12}
+                  className="size-3"
+                />
               </a>
-            </section>
+            </InfoCard>
           )}
 
           <div className="mt-[18px] flex justify-center gap-[9px] md:mt-0">

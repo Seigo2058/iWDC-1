@@ -1,12 +1,12 @@
 "use client";
 
-import { ChevronLeft } from "lucide-react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { FoodDetail } from "@/components/capture/FoodDetail";
+import { ErrorView, useErrorActions } from "@/components/error/ErrorView";
+import { FoodDetailSkeleton } from "@/components/food/FoodDetailSkeleton";
 import { useLang } from "@/components/i18n/I18nProvider";
-import { ProgressText } from "@/components/ui/ProgressText";
 import type { FoodData } from "@/lib/analyze/types";
 import {
   fetchFood,
@@ -28,10 +28,14 @@ type State =
   | { status: "error"; reason: FetchFoodFailureReason };
 
 /** A dish opened from Recent Scan, loaded fresh from the database
- *  (recent-scans.md 4.4, 6.2). Opening it does not change the history order. */
-export function FoodDetailView({ foodId }: { foodId: number }) {
+ *  (recent-scans.md 4.4, 6.2). Opening it does not change the history order.
+ *  With `scanId` (opened from a multi-dish scan's list) it also offers Back
+ *  to that list. */
+export function FoodDetailView({ foodId, scanId }: { foodId: number; scanId?: string }) {
   const t = useT();
   const lang = useLang();
+  const router = useRouter();
+  const { back, home } = useErrorActions();
   const [state, setState] = useState<State>({ status: "loading" });
 
   // The name saved in Recent Scan lets the heading show while loading.
@@ -72,59 +76,51 @@ export function FoodDetailView({ foodId }: { foodId: number }) {
     };
   }, [isLoading, foodId]);
 
+  // Back to the list the dish was opened from: a history step in the usual
+  // case, or the list's URL when this page was opened on its own (reloads
+  // keep the history, so that is only a fresh tab or a pasted link).
+  const handleBackToScan = scanId
+    ? () => {
+        if (window.history.length > 1) router.back();
+        else router.push(`/${lang}/scans/${encodeURIComponent(scanId)}`);
+      }
+    : undefined;
+
   // Loaded, the detail is its own full page (with Home at its end).
-  if (state.status === "success") return <FoodDetail food={state.food} />;
+  if (state.status === "success") {
+    return <FoodDetail food={state.food} onBack={handleBackToScan} />;
+  }
 
-  return (
-    <div className="flex flex-1 flex-col gap-5 bg-zinc-50 p-4 dark:bg-black">
-      <Link
-        href={`/${lang}`}
-        className="flex w-fit items-center gap-1 text-sm text-zinc-600 underline dark:text-zinc-400"
-      >
-        <ChevronLeft aria-hidden="true" size={16} />
-        {t("foodPage.backHome")}
-      </Link>
+  if (state.status === "notFound") {
+    return (
+      <ErrorView
+        code="404"
+        title={t("errorPage.dishNotFound.title")}
+        message={t("foodPage.error.notFound")}
+        back={back}
+        primary={home}
+      />
+    );
+  }
 
-      {state.status === "loading" && (
-        <div aria-live="polite" className="flex flex-col gap-4">
-          {savedName ? (
-            <h1 className="text-2xl font-semibold">{savedName}</h1>
-          ) : (
-            <div className="h-8 w-2/3 animate-pulse rounded bg-black/[.08] dark:bg-white/[.12]" />
-          )}
-          <div className="aspect-[4/3] w-full max-w-md animate-pulse rounded-xl bg-black/[.06] dark:bg-white/[.1]" />
-          <div className="flex flex-col gap-2">
-            <div className="h-4 w-full animate-pulse rounded bg-black/[.08] dark:bg-white/[.12]" />
-            <div className="h-4 w-5/6 animate-pulse rounded bg-black/[.08] dark:bg-white/[.12]" />
-          </div>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            <ProgressText text={t("foodPage.loading")} />
-          </p>
-        </div>
-      )}
+  if (state.status === "error") {
+    return (
+      <ErrorView
+        code="500"
+        title={t("errorPage.loadFailed.title")}
+        message={t(`foodPage.error.${state.reason}`)}
+        back={back}
+        // A misconfigured app won't recover by retrying.
+        primary={
+          state.reason === "config"
+            ? home
+            : { label: t("errorPage.retry"), onClick: () => setState({ status: "loading" }) }
+        }
+      />
+    );
+  }
 
-      {state.status === "notFound" && (
-        <p className="text-zinc-700 dark:text-zinc-300">
-          {t("foodPage.error.notFound")}
-        </p>
-      )}
-
-      {state.status === "error" && (
-        <div className="flex flex-col items-start gap-3">
-          <p className="text-red-600 dark:text-red-400">
-            {t(`foodPage.error.${state.reason}`)}
-          </p>
-          {state.reason !== "config" && (
-            <button
-              type="button"
-              onClick={() => setState({ status: "loading" })}
-              className="rounded-full border border-black/[.08] px-5 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-            >
-              {t("foodPage.retry")}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
+  // Loading: the page's own layout with placeholders, and the name from
+  // the history already in place.
+  return <FoodDetailSkeleton name={savedName} />;
 }
