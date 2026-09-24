@@ -97,10 +97,12 @@ const response = await fetch("/api/analyze-food", {
         "jp": ["エビ", "レモングラス", "..."]
       },
       "spicy_level": "Very Spicy",
-      "calories": 220,
-      "protein": 24,
-      "carbs": 12,
-      "fat": 8,
+      "audience": "Both",
+      "country": "Thailand",
+      "calories": "350 - 450",
+      "protein": "10 - 15",
+      "carbs": "50 - 60",
+      "fat": "15 - 20",
       "how_to_eat": { "en": "...", "th": "...", "jp": "..." },
       "source_url": "https://en.wikipedia.org/wiki/Tom_yum",
       "image_url": ""
@@ -120,10 +122,12 @@ const response = await fetch("/api/analyze-food", {
 | `data.description` | `{en, th, jp}` | คำอธิบายอาหาร 3 ภาษา |
 | `data.ingredients` | `{en, th, jp}` (อาร์เรย์สตริงของแต่ละภาษา) | ส่วนประกอบหลัก frontend รองรับทั้งสองรูปแบบ เพื่อให้แสดงผลได้แม้ได้รับอาร์เรย์ภาษาอังกฤษอย่างเดียวตามข้อกำหนดเดิม |
 | `data.spicy_level` | Very Spicy | ระดับความเผ็ด **มี 4 แบบ: `No Spicy` / `Low Spicy` / `Medium Spicy` / `Very Spicy`** ป้ายชื่อ 3 ภาษาสำหรับแสดงผลเตรียมไว้ฝั่ง frontend |
-| `data.calories` | 220 | แคลอรี (kcal, ค่าโดยประมาณต่อหนึ่งมื้อ) API แปลงจากคอลัมน์ DB `calories_kcal` แล้วส่งกลับ |
-| `data.protein` | 24 | ปริมาณโปรตีน (g, ค่าโดยประมาณต่อหนึ่งมื้อ) คอลัมน์ DB `protein_g` |
-| `data.carbs` | 12 | ปริมาณคาร์โบไฮเดรต (g, ค่าโดยประมาณต่อหนึ่งมื้อ) คอลัมน์ DB `carbohydrate_g` |
-| `data.fat` | 8 | ปริมาณไขมัน (g, ค่าโดยประมาณต่อหนึ่งมื้อ) คอลัมน์ DB `fat_g` |
+| `data.audience` | Both | กลุ่มที่เหมาะสม ค่าใน DB คือ `Adult` (ผู้ใหญ่) / `Both` (ผู้ใหญ่และเด็ก) แสดงในส่วน "Suitable for" ของข้อมูลอาหารเป็นป้ายสีเทาแยกตามกลุ่ม ("ผู้ใหญ่", "เด็ก", `Both` แสดงทั้งสอง) ค่าที่ไม่รู้จักจะแสดงตามเดิม |
+| `data.country` | Thailand | ประเทศของอาหาร (ชื่อภาษาอังกฤษ ค่าใน DB คือ `Thailand` / `Japan`) แสดงในส่วน "COUNTRY (ประเทศ)" ของข้อมูลอาหารเป็นชื่อประเทศในภาษาที่แสดง (`Intl.DisplayNames`) |
+| `data.calories` | "350 - 450" | แคลอรี (kcal, ค่าโดยประมาณต่อหนึ่งมื้อ) คอลัมน์ DB `calories_kcal` (TEXT) **ส่งกลับเป็นช่วงค่าในรูปแบบข้อความ** ฝั่งหน้าเว็บจัดรูปแบบเป็น "350–450" เพื่อแสดงผล และแสดงได้แม้จะได้รับค่าเป็นตัวเลข |
+| `data.protein` | "10 - 15" | ปริมาณโปรตีน (g, ค่าโดยประมาณต่อหนึ่งมื้อ) คอลัมน์ DB `protein_g` (TEXT รูปแบบเดียวกับ `calories`) |
+| `data.carbs` | "50 - 60" | ปริมาณคาร์โบไฮเดรต (g, ค่าโดยประมาณต่อหนึ่งมื้อ) คอลัมน์ DB `carbohydrate_g` (TEXT รูปแบบเดียวกับ `calories`) |
+| `data.fat` | "15 - 20" | ปริมาณไขมัน (g, ค่าโดยประมาณต่อหนึ่งมื้อ) คอลัมน์ DB `fat_g` (TEXT รูปแบบเดียวกับ `calories`) |
 | `data.how_to_eat` | `{en, th, jp}` | วิธีรับประทานอาหาร 3 ภาษา |
 | `data.source_url` | https://... | URL แหล่งที่มาของข้อมูลอาหาร (เฉพาะแหล่งภาษาอังกฤษ) |
 | `data.image_url` | (อาจเป็นสตริงว่าง) | URL รูปภาพอ้างอิงของอาหาร ใช้สำหรับ "ภาพอ้างอิง" ในการ์ดข้อมูลอาหาร และภาพย่อในรายการอาหาร |

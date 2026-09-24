@@ -5,10 +5,14 @@ export interface IngredientDetail {
   madeOf: string | null;
 }
 
+/** `busy` / `quota`: the backend's 503 / 429, as for analysis
+ *  (AnalyzeFailureReason). */
 export type IngredientDetailFailureReason =
   | "network"
   | "timeout"
   | "config"
+  | "busy"
+  | "quota"
   | "server";
 
 export type IngredientDetailResult =

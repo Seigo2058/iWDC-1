@@ -1,5 +1,5 @@
-/** Categories and items are defined in allergy-selection.md 4 (20 items,
- *  finalized list and grouping). Category/item labels live in the locale
+/** Categories and items are defined in allergy-selection.md 4 (21 items in
+ *  8 categories, as in the Figma allergy screen "Allergies(3)"). Category/item labels live in the locale
  *  files under `allergies.categories` / `allergies.items`, keyed by id. */
 
 export type AllergenCategory =
@@ -9,7 +9,8 @@ export type AllergenCategory =
   | "fruit"
   | "nutsLegumes"
   | "vegetable"
-  | "other";
+  | "other"
+  | "religion";
 
 export const ALLERGEN_CATEGORIES: readonly AllergenCategory[] = [
   "seafood",
@@ -19,6 +20,7 @@ export const ALLERGEN_CATEGORIES: readonly AllergenCategory[] = [
   "nutsLegumes",
   "vegetable",
   "other",
+  "religion",
 ];
 
 export interface AllergenItem {
@@ -31,7 +33,6 @@ export const ALLERGEN_ITEMS: readonly AllergenItem[] = [
   { id: "shellfish", category: "seafood" },
   { id: "crab", category: "seafood" },
   { id: "fish", category: "seafood" },
-  { id: "beef", category: "meat" },
   { id: "chicken", category: "meat" },
   { id: "egg", category: "eggDairy" },
   { id: "milk", category: "eggDairy" },
@@ -42,10 +43,14 @@ export const ALLERGEN_ITEMS: readonly AllergenItem[] = [
   { id: "peanuts", category: "nutsLegumes" },
   { id: "lupine", category: "nutsLegumes" },
   { id: "soy", category: "nutsLegumes" },
-  { id: "celery", category: "vegetable" },
   { id: "mushroom", category: "vegetable" },
+  { id: "celery", category: "vegetable" },
   { id: "gluten", category: "other" },
   { id: "gelatin", category: "other" },
+  // Dietary restrictions for religious reasons, picked like allergies.
+  { id: "beef", category: "religion" },
+  { id: "pork", category: "religion" },
+  { id: "alcohol", category: "religion" },
 ];
 
 export function itemsByCategory(

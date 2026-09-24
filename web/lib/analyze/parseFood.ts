@@ -22,10 +22,12 @@ export function toFoodData(value: unknown): FoodData | null {
     ingredients: toLocalizedList(raw.ingredients),
     allergens: toLocalizedList(raw.allergens),
     spicyLevel: toSpicyLevel(raw.spicy_level),
-    calories: asNumber(raw.calories),
-    protein: asNumber(raw.protein),
-    carbs: asNumber(raw.carbs),
-    fat: asNumber(raw.fat),
+    audience: asText(raw.audience),
+    country: asText(raw.country),
+    calories: asNutrient(raw.calories),
+    protein: asNutrient(raw.protein),
+    carbs: asNutrient(raw.carbs),
+    fat: asNutrient(raw.fat),
     howToEat: toLocalizedText(raw.how_to_eat),
     sourceUrl: asText(raw.source_url),
     imageUrl: asText(raw.image_url),
@@ -44,6 +46,15 @@ function asText(value: unknown): string | null {
 
 function asNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/** Nutrition values are estimated ranges stored as text ("350 - 450");
+ *  plain numbers are accepted too. Ranges are tightened to "350–450" so they
+ *  fit the nutrition tiles. */
+function asNutrient(value: unknown): string | null {
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : null;
+  const text = asText(value)?.trim();
+  return text ? text.replace(/\s*[-–~〜]\s*/g, "–") : null;
 }
 
 function toLocalizedText(value: unknown): LocalizedText {

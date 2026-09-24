@@ -4,7 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 
-import { AllergenIcon, hasAllergenIcon } from "@/components/allergies/AllergenIcon";
+import {
+  AllergenIcon,
+  hasAllergenIcon,
+} from "@/components/allergies/AllergenIcon";
 import { useLang } from "@/components/i18n/I18nProvider";
 import { ALLERGEN_ITEMS } from "@/lib/allergens/allergenList";
 import {
@@ -22,7 +25,13 @@ const PC_ICONS = 7;
 // "Not set" there would flash for users who have allergies saved.
 const getServerSnapshot = () => null;
 
-function CountBadge({ count, className }: { count: number; className: string }) {
+function CountBadge({
+  count,
+  className,
+}: {
+  count: number;
+  className: string;
+}) {
   return (
     <span
       className={`h-4 min-w-6 items-center justify-center rounded-full bg-[#cbcbcb] px-1.5 text-[10px] leading-none text-white md:h-[37px] md:min-w-[46px] md:px-[9px] md:text-[22.6px] md:font-medium ${className}`}
@@ -53,7 +62,7 @@ export function MyAllergiesCard() {
         );
 
   return (
-    <section className="flex h-[78px] items-center justify-between gap-3 rounded-[33px] bg-white pl-[30px] pr-[11px] shadow-[0_0_20px_rgba(0,0,0,0.08)] md:h-[221px] md:rounded-[40px] md:pl-[61px] md:pr-[11px] md:shadow-[0_0_10px_rgba(0,0,0,0.08)]">
+    <section className="flex h-[78px] items-center justify-between gap-3 rounded-[33px] bg-white pl-[30px] pr-[16px] shadow-[0_0_20px_rgba(0,0,0,0.08)] md:h-[221px] md:rounded-[40px] md:pl-[61px] md:pr-[11px] md:shadow-[0_0_10px_rgba(0,0,0,0.08)]">
       <h2 className="min-w-0 truncate text-base text-[#564334] md:text-[32px] md:font-medium">
         {t("home.myAllergies.title")}
       </h2>
@@ -79,10 +88,16 @@ export function MyAllergiesCard() {
                 />
               ))}
               {ids.length > PHONE_ICONS && (
-                <CountBadge count={ids.length - PHONE_ICONS} className="flex md:hidden" />
+                <CountBadge
+                  count={ids.length - PHONE_ICONS}
+                  className="flex md:hidden"
+                />
               )}
               {ids.length > PC_ICONS && (
-                <CountBadge count={ids.length - PC_ICONS} className="hidden md:flex" />
+                <CountBadge
+                  count={ids.length - PC_ICONS}
+                  className="hidden md:flex"
+                />
               )}
             </>
           ))}
@@ -91,7 +106,13 @@ export function MyAllergiesCard() {
           href={`/${lang}/allergies`}
           className="flex h-full items-center gap-1 rounded-full bg-[#ff8500] px-[15px] text-[11px] text-white transition-opacity hover:opacity-90 md:gap-[7px] md:px-[34px] md:text-[24.9px] md:font-medium md:tracking-[-0.5px]"
         >
-          <Image src="/images/icons/edit.svg" alt="" width={19} height={19} className="size-[9px] md:size-[18.5px]" />
+          <Image
+            src="/images/icons/edit.svg"
+            alt=""
+            width={19}
+            height={19}
+            className="size-[9px] md:size-[18.5px]"
+          />
           {t("home.myAllergies.edit")}
         </Link>
       </div>

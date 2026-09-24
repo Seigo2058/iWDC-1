@@ -2,17 +2,19 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 
 /** Layout shared by the capture flow's screens before the result (camera,
- *  photo check, crop, final confirmation): a large frame over a row of
- *  controls, exactly filling the viewport below the header so the frame
- *  takes whatever height is left and the controls never scroll out of
- *  reach. The frame is the full column width on phones
- *  and the largest square that fits (up to the design's 720px) on PC. */
+ *  photo check, crop, final confirmation): a row with the screen's hint (and
+ *  a round button on some screens), a large frame, and a row of controls,
+ *  exactly filling the viewport below the header so the frame takes
+ *  whatever height is left and the controls never scroll out of reach. The
+ *  frame is the full column width on phones and the largest square that
+ *  fits (up to the design's 692px) on PC (Figma: "MacBook Pro 16' - 2",
+ *  "- 4", "Cropped Screen", "- 6"). */
 export function CaptureScreen({
   heading,
   frameClassName,
   frame,
   controls,
-  phoneTopBar,
+  topBar,
   className = "bg-[#f0f0f0]",
 }: {
   /** Screen-reader heading; the designs show none. */
@@ -21,31 +23,24 @@ export function CaptureScreen({
   frameClassName: string;
   frame: ReactNode;
   controls: ReactNode;
-  /** A row above the frame on phones only, for a screen that takes the
-   *  whole viewport there (SiteHeader hides itself for it, as on the phone
-   *  camera screen) and so brings its own back button. */
-  phoneTopBar?: ReactNode;
+  /** The row above the frame (see CaptureTopBar). On phones these screens
+   *  take the whole viewport (SiteHeader hides itself for them). */
+  topBar: ReactNode;
   /** Page background. */
   className?: string;
 }) {
-  const height = phoneTopBar
-    ? "h-dvh md:h-[calc(100dvh-var(--site-header-height))]"
-    : "h-[calc(100dvh-var(--site-header-height))]";
-
   return (
     <div
-      className={`flex ${height} min-h-[32rem] flex-col items-center gap-5 px-5 pb-6 pt-5 font-brand md:min-h-[40rem] md:gap-[38px] md:px-10 md:pb-10 md:pt-[55px] ${className}`}
+      className={`flex h-dvh min-h-[32rem] flex-col items-center gap-5 px-5 pb-6 pt-5 font-brand md:h-[calc(100dvh-var(--site-header-height))] md:min-h-[40rem] md:gap-6 md:px-10 md:pb-10 md:pt-10 ${className}`}
     >
       <h1 className="sr-only">{heading}</h1>
 
-      {phoneTopBar && (
-        // 12px above the frame in the design, rather than the column's 20px.
-        <div className="-mb-2 w-full max-w-[33rem] md:hidden">{phoneTopBar}</div>
-      )}
+      {/* 12px above the frame on phones, rather than the column's 20px. */}
+      <div className="-mb-2 w-full max-w-[33rem] md:mb-0 md:max-w-[692px]">{topBar}</div>
 
       <div className="flex min-h-0 w-full max-w-[33rem] flex-1 justify-center md:max-w-none">
         <div
-          className={`relative h-full w-full overflow-hidden md:aspect-square md:max-h-[720px] md:w-auto md:max-w-full ${frameClassName}`}
+          className={`relative h-full w-full overflow-hidden md:aspect-square md:max-h-[692px] md:w-auto md:max-w-full ${frameClassName}`}
         >
           {frame}
         </div>
@@ -53,6 +48,55 @@ export function CaptureScreen({
 
       <div className="flex shrink-0 items-center">{controls}</div>
     </div>
+  );
+}
+
+/** The row above the frame: the screen's message pill centered on the
+ *  screen, with an optional round button flush with the frame's left edge
+ *  (Back on the camera, reset on the crop screen). Two equal side columns,
+ *  so a long message wraps instead of running into the button. */
+export function CaptureTopBar({
+  button,
+  children,
+  alert = false,
+}: {
+  button?: ReactNode;
+  children: ReactNode;
+  alert?: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-[40px_1fr_40px] items-center gap-1.5 md:grid-cols-[57px_1fr_57px] md:gap-3">
+      <div>{button}</div>
+      <MessagePill alert={alert} className="justify-self-center md:text-2xl">
+        {children}
+      </MessagePill>
+    </div>
+  );
+}
+
+/** Dark translucent round button for CaptureTopBar (40px on phones, 57px
+ *  on PC). */
+export function RoundOverlayButton({
+  label,
+  icon,
+  onClick,
+  disabled = false,
+}: {
+  label: string;
+  icon: ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className="flex size-10 items-center justify-center rounded-full bg-black/50 shadow-[0_0_4px_rgba(0,0,0,0.32)] backdrop-blur-[6px] transition-opacity hover:opacity-85 disabled:opacity-50 md:size-[57px]"
+    >
+      {icon}
+    </button>
   );
 }
 
@@ -73,31 +117,6 @@ export function MessagePill({
     >
       {children}
     </p>
-  );
-}
-
-const ONLY_CLASS = { phone: "md:hidden", pc: "max-md:hidden" } as const;
-
-/** MessagePill at the bottom of the frame. `only` limits it to phones (the
- *  PC designs show no hint, so for text that is only a hint) or to PC (for
- *  a screen whose phone layout shows it elsewhere). Click-through, so it
- *  never blocks a crop handle underneath it. */
-export function FrameMessage({
-  children,
-  alert = false,
-  only,
-}: {
-  children: ReactNode;
-  alert?: boolean;
-  only?: keyof typeof ONLY_CLASS;
-}) {
-  return (
-    <MessagePill
-      alert={alert}
-      className={`pointer-events-none absolute bottom-5 left-1/2 w-max max-w-[calc(100%-1.5rem)] -translate-x-1/2 md:bottom-9 md:px-5 md:text-2xl ${only ? ONLY_CLASS[only] : ""}`}
-    >
-      {children}
-    </MessagePill>
   );
 }
 
@@ -122,7 +141,8 @@ export function DecisionControls({
   nextDisabled?: boolean;
 }) {
   return (
-    <div className="flex max-w-full items-center gap-5 md:gap-[42px]">
+    // 12px under the frame on PC, rather than the column's 24px.
+    <div className="flex max-w-full items-center gap-5 md:-mt-3 md:gap-[42px]">
       <button
         type="button"
         onClick={onBack}
@@ -132,7 +152,7 @@ export function DecisionControls({
       >
         <Image src="/images/icons/chevron-left.svg" alt="" width={24} height={24} className="size-6 md:size-[50px]" />
       </button>
-      <p className="min-w-0 text-center text-xl font-medium tracking-[-0.4px] text-[#564334] md:text-[41.6px] md:tracking-[-0.83px]">
+      <p className="min-w-0 text-center text-xl font-medium tracking-[-0.4px] text-[#564334] md:text-[45.75px] md:tracking-[-0.915px]">
         {label}
       </p>
       <button

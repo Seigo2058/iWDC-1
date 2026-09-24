@@ -1,25 +1,34 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import Link from "next/link";
-import { useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
-import { DishPhoto } from "@/components/home/DishPhoto";
+import { ErrorView, useErrorActions } from "@/components/error/ErrorView";
+import { DishCardList } from "@/components/food/DishCardList";
 import { useLang } from "@/components/i18n/I18nProvider";
+import { fetchFood } from "@/lib/food/fetchFood";
 import { useT } from "@/lib/i18n/useT";
 import { formatScannedAt } from "@/lib/recentScans/formatScannedAt";
 import {
   getRecentScansSnapshot,
   getServerRecentScansSnapshot,
+  hasRecentScanDescription,
+  recentScanFoodDescription,
   recentScanFoodName,
+  saveRecentScanDescription,
   subscribeRecentScans,
 } from "@/lib/recentScans/storage";
 
 /** The dishes of one multi-dish scan from Recent Scan (recent-scans.md 4.5),
- *  built from the saved history; each opens the dish's detail page. */
+ *  in the same design as the list right after a scan, drawn from the saved
+ *  history (name, description, photo). History saved before descriptions
+ *  were kept gets them from the database once, saved back into the history.
+ *  Each card opens the dish's page, which then offers Back to this list. */
 export function ScanGroupView({ scanId }: { scanId: string }) {
   const t = useT();
   const lang = useLang();
+  const router = useRouter();
+  const { back, home } = useErrorActions();
   const scans = useSyncExternalStore(
     subscribeRecentScans,
     getRecentScansSnapshot,
@@ -27,56 +36,73 @@ export function ScanGroupView({ scanId }: { scanId: string }) {
   );
   const scan = scans?.find((entry) => entry.id === scanId);
 
+  // Dishes saved without a description: loaded once and saved into the
+  // history (which then re-renders this list); ids that couldn't be loaded
+  // are remembered so their cards stop showing the placeholder.
+  const [failedIds, setFailedIds] = useState<number[]>([]);
+  const missingIds =
+    scan?.foods
+      .filter((food) => !hasRecentScanDescription(food))
+      .map((food) => food.foodId)
+      .join(",") ?? "";
+
+  // Each dish is requested once: saving one shrinks `missingIds` and re-runs
+  // this effect, which must not drop or repeat the others still in flight.
+  // (A result arriving after leaving the page is still worth saving.)
+  const requestedIds = useRef(new Set<number>());
+
+  useEffect(() => {
+    if (!missingIds) return;
+    for (const id of missingIds.split(",").map(Number)) {
+      if (requestedIds.current.has(id)) continue;
+      requestedIds.current.add(id);
+      fetchFood(id).then((result) => {
+        if (result.outcome === "success") saveRecentScanDescription(result.food);
+        else setFailedIds((previous) => [...previous, id]);
+      });
+    }
+  }, [missingIds]);
+
+  if (scans !== null && !scan) {
+    return (
+      <ErrorView
+        code="404"
+        title={t("errorPage.scanNotFound.title")}
+        message={t("scanPage.notFound")}
+        back={back}
+        primary={home}
+      />
+    );
+  }
+
+  // Local Storage is only readable after hydration.
+  if (!scan) {
+    return <div aria-hidden="true" className="flex-1 bg-[#f0f0f0]" />;
+  }
+
   return (
-    <div className="flex flex-1 flex-col gap-5 bg-zinc-50 p-4 dark:bg-black">
-      <Link
-        href={`/${lang}`}
-        className="flex w-fit items-center gap-1 text-sm text-zinc-600 underline dark:text-zinc-400"
-      >
-        <ChevronLeft aria-hidden="true" size={16} />
-        {t("foodPage.backHome")}
-      </Link>
-
-      {scans === null ? (
-        // Local Storage is only readable after hydration.
-        <div aria-hidden="true" className="flex flex-col gap-3">
-          <div className="h-8 w-1/2 animate-pulse rounded bg-black/[.08] dark:bg-white/[.12]" />
-          <div className="h-20 animate-pulse rounded-xl bg-black/[.06] dark:bg-white/[.1]" />
-        </div>
-      ) : !scan ? (
-        <p className="text-zinc-700 dark:text-zinc-300">{t("scanPage.notFound")}</p>
-      ) : (
-        <>
-          <header className="flex flex-col gap-1">
-            <h1 className="text-2xl font-semibold">
-              {t("scanPage.heading", { count: scan.foods.length })}
-            </h1>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              {formatScannedAt(scan.scannedAt, lang, t, new Date())}
-            </p>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              {t("capture.result.selectDish")}
-            </p>
-          </header>
-
-          <ul className="flex flex-col gap-2">
-            {scan.foods.map((food) => (
-              <li key={food.foodId}>
-                <Link
-                  href={`/${lang}/foods/${food.foodId}`}
-                  className="flex items-center gap-3 rounded-xl border border-black/[.08] p-3 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-                >
-                  <DishPhoto src={food.imageUrl} className="size-16 shrink-0 rounded-lg" />
-                  <span className="min-w-0 flex-1 font-semibold">
-                    {recentScanFoodName(food, lang)}
-                  </span>
-                  <ChevronRight aria-hidden="true" size={20} className="shrink-0 text-zinc-400" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-    </div>
+    <DishCardList
+      title={t("capture.result.detectedFoods", { count: scan.foods.length })}
+      meta={formatScannedAt(scan.scannedAt, lang, t, new Date())}
+      subtitle={t("capture.result.checkDishes")}
+      items={scan.foods.map((food) => ({
+        key: String(food.foodId),
+        name: recentScanFoodName(food, lang),
+        description:
+          hasRecentScanDescription(food) || failedIds.includes(food.foodId)
+            ? recentScanFoodDescription(food, lang)
+            : undefined,
+        imageUrl: food.imageUrl,
+        // The scan id lets the dish page offer Back to this list.
+        href: `/${lang}/foods/${food.foodId}?scan=${encodeURIComponent(scan.id)}`,
+      }))}
+      backLabel={t("capture.result.back")}
+      // Back to where the list was opened from (home, as a rule), or home
+      // when this page was opened on its own.
+      onBack={() => {
+        if (window.history.length > 1) router.back();
+        else router.push(`/${lang}`);
+      }}
+    />
   );
 }

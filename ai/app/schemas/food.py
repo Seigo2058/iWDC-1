@@ -9,10 +9,11 @@ class FoodItemBase(BaseModel):
     description: Dict[str, str]
     ingredients: str
     spicy_level: str
-    calories_kcal: Optional[int] = None
-    protein_g: Optional[float] = None
-    carbohydrate_g: Optional[float] = None
-    fat_g: Optional[float] = None
+    # Estimated ranges as text, e.g. "350 - 450".
+    calories_kcal: Optional[str] = None
+    protein_g: Optional[str] = None
+    carbohydrate_g: Optional[str] = None
+    fat_g: Optional[str] = None
     audience: Optional[str] = None
     how_to_eat: Optional[str] = None
     source_url: Optional[str] = None

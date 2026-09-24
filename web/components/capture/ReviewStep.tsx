@@ -2,18 +2,17 @@
 
 import {
   CaptureScreen,
+  CaptureTopBar,
   DecisionControls,
-  MessagePill,
 } from "@/components/capture/CaptureScreen";
 import { useT } from "@/lib/i18n/useT";
 import { useObjectUrl } from "@/lib/hooks/useObjectUrl";
 import { useCaptureStore } from "@/lib/store/useCaptureStore";
 
 /** "Use this photo?" right after taking or choosing it, before cropping
- *  (Figma: phone "User" / PC "MacBook Pro 16' - 4"): the whole photo in a
- *  green-bordered frame; Back retakes it, the check mark goes on to crop.
- *  On phones the screen is full-height without the site header, the hint
- *  above the frame. */
+ *  (Figma: phone "User" / PC "MacBook Pro 16' - 4"): the whole photo in the
+ *  frame (green-bordered on phones); Back retakes it, the check mark goes on to crop.
+ *  The hint sits above the frame. */
 export function ReviewStep() {
   const t = useT();
 
@@ -32,10 +31,8 @@ export function ReviewStep() {
     <CaptureScreen
       heading={t("capture.reviewing.heading")}
       className="bg-white md:bg-[#f0f0f0]"
-      frameClassName="rounded-[32px] border-4 border-[#19532b] bg-[rgba(41,41,41,0.2)] md:rounded-[40px] md:bg-white md:shadow-[0_0_16px_rgba(0,0,0,0.24)]"
-      phoneTopBar={
-        <MessagePill className="mx-auto w-fit">{t("capture.reviewing.hint")}</MessagePill>
-      }
+      frameClassName="rounded-[32px] border-4 border-[#19532b] bg-[rgba(41,41,41,0.2)] md:rounded-[40px] md:border-0 md:bg-white md:shadow-[0_0_16px_rgba(0,0,0,0.24)]"
+      topBar={<CaptureTopBar>{t("capture.reviewing.hint")}</CaptureTopBar>}
       frame={
         imageUrl && (
           // The whole photo (contain, not cover), so what is judged here is

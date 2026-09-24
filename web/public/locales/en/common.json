@@ -54,7 +54,9 @@
         "config": "The app is not configured correctly. Please contact support.",
         "network": "Could not reach the server. Check your connection and try again.",
         "timeout": "The analysis is taking too long. Please try again.",
-        "server": "The analysis failed. Please try again."
+        "server": "The analysis failed. Please try again.",
+        "busy": "The AI is busy right now. Please wait a moment and try again.",
+        "quota": "The AI has reached today's usage limit. Please try again later."
       },
       "label": "Confirm Image",
       "hint": "Make sure text is readable."
@@ -69,6 +71,7 @@
         "very": "Very spicy"
       },
       "nutrition": "Nutritional Profile",
+      "nutritionNote": "Average nutrients per meal",
       "calories": "Calories",
       "protein": "Protein",
       "carbs": "Carbs",
@@ -77,7 +80,6 @@
       "detectedFoods": "Detected Foods ({{count}})",
       "checkDishes": "Check out the information of the foods.",
       "back": "Back",
-      "selectDish": "Tap a dish to see its details.",
       "allergyWarning": "Contains allergens you selected",
       "allergyNoMatch": "None of your selected allergens are listed for this dish.",
       "allergyNoData": "No allergen information is registered for this dish.",
@@ -88,14 +90,17 @@
       "otherAllergen": "Other Allergen",
       "moreInformation": "More Information",
       "openSource": "Open Source Link",
-      "home": "Home"
+      "home": "Home",
+      "country": "Country",
+      "suitableFor": "Suitable for",
+      "audience": {
+        "adult": "Adult",
+        "child": "Child"
+      }
     },
     "notFound": {
-      "heading": "Could not identify the dish",
-      "message": "Try a photo where the dish fills more of the frame, or crop it again.",
-      "retake": "Take Another Photo",
-      "redoCrop": "Edit the Photo Again",
-      "backHome": "Back to Home"
+      "heading": "Recipe Not Found",
+      "message": "Try cropping the image again."
     },
     "ingredient": {
       "whatIsIt": "What is it?",
@@ -108,7 +113,9 @@
         "network": "Could not reach the server. Check your connection and try again.",
         "timeout": "Generating the description took too long. Please try again.",
         "config": "The app is not configured correctly. Please contact support.",
-        "server": "Could not generate a description. Please try again."
+        "server": "Could not generate a description. Please try again.",
+        "busy": "The AI is busy right now. Please wait a moment and try again.",
+        "quota": "The AI has reached today's usage limit. Please try again later."
       }
     }
   },
@@ -121,11 +128,12 @@
     "categories": {
       "seafood": "Seafood",
       "meat": "Meat",
-      "eggDairy": "Eggs & Dairy",
-      "fruit": "Fruits",
+      "eggDairy": "Egg & Dairy",
+      "fruit": "Fruit",
       "nutsLegumes": "Nuts & Legumes",
-      "vegetable": "Vegetables & Mushrooms",
-      "other": "Other"
+      "vegetable": "Vegetable",
+      "other": "Other",
+      "religion": "Religion"
     },
     "items": {
       "shrimp": "Shrimp",
@@ -134,19 +142,21 @@
       "fish": "Fish",
       "beef": "Beef",
       "chicken": "Chicken",
-      "egg": "Eggs",
+      "egg": "Egg",
       "milk": "Milk",
       "apple": "Apple",
       "banana": "Banana",
       "kiwi": "Kiwi",
       "treeNuts": "Tree Nuts",
-      "peanuts": "Peanuts",
+      "peanuts": "Peanut",
       "lupine": "Lupine",
       "soy": "Soy",
       "celery": "Celery",
       "mushroom": "Mushroom",
       "gluten": "Gluten",
-      "gelatin": "Gelatin"
+      "gelatin": "Gelatin",
+      "pork": "Pork",
+      "alcohol": "Alcohol"
     }
   },
   "nav": {
@@ -172,8 +182,6 @@
   },
   "foodPage": {
     "loading": "Loading dish information...",
-    "backHome": "Back to Home",
-    "retry": "Try Again",
     "error": {
       "notFound": "We couldn't find this dish.",
       "network": "Could not reach the server. Check your connection and try again.",
@@ -183,8 +191,28 @@
     }
   },
   "scanPage": {
-    "heading_one": "{{count}} dish",
-    "heading_other": "{{count}} dishes",
     "notFound": "This scan could not be found in your history."
+  },
+  "errorPage": {
+    "back": "Back",
+    "home": "Home",
+    "retry": "Try Again",
+    "pageNotFound": {
+      "title": "Page Not Found",
+      "message": "The page you're looking for doesn't exist or may have moved."
+    },
+    "dishNotFound": {
+      "title": "Dish Not Found"
+    },
+    "scanNotFound": {
+      "title": "Scan Not Found"
+    },
+    "loadFailed": {
+      "title": "Couldn't Load"
+    },
+    "unexpected": {
+      "title": "Something Went Wrong",
+      "message": "An unexpected error occurred. Please try again."
+    }
   }
 }

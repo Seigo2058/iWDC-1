@@ -38,6 +38,10 @@ def food_to_dict(item: FoodItem) -> dict:
         "ingredients": item.ingredients,
         "allergens": item.allergens,
         "spicy_level": item.spicy_level,
+        # "Adult" or "Both" (adults and children), and the dish's country
+        # ("Thailand", "Japan"); shown as "Suitable for" and "Sourcing".
+        "audience": item.audience,
+        "country": item.country,
         "calories": item.calories_kcal,
         "protein": item.protein_g,
         "carbs": item.carbohydrate_g,
@@ -60,9 +64,6 @@ async def analyze_food(
     image_bytes = await file.read()
     print(f"[DEBUG] 2. File read successfully! Size: {len(image_bytes) / 1024:.2f} KB")
 
-    actual_api_key = x_api_key if x_api_key else os.getenv("GEMINI_API_KEY")
-    local_client = genai.Client(api_key=actual_api_key)
-
     prompt = """
     You are an expert food classifier and menu translator.
     Analyze the uploaded image.
@@ -75,14 +76,16 @@ async def analyze_food(
     
     try:
         print("[DEBUG] 3. Sending image to Gemini (Hybrid Mode)...")
-        
-        response = await local_client.aio.models.generate_content(
-            model='gemini-3.6-flash',
+
+        # Through the model fallback (GEMINI_MODELS), with the caller's own
+        # key when the X-API-Key header carries one.
+        response = await gemini.generate_content(
             contents=[
                 prompt,
                 types.Part.from_bytes(data=image_bytes, mime_type=file.content_type)
             ],
-            config=types.GenerateContentConfig(tools=[])
+            config=types.GenerateContentConfig(tools=[]),
+            api_key=x_api_key,
         )
         
         print("[DEBUG] 4. Gemini has replied!")
@@ -146,9 +149,6 @@ async def get_ingredient_detail(
     x_api_key: Optional[str] = Header(None)
 ):
     try:
-        actual_api_key = x_api_key if x_api_key else os.getenv("GEMINI_API_KEY")
-        local_client = genai.Client(api_key=actual_api_key)
-
         print(f"\n[DEBUG] 1. Received request - Ingredient: '{request.ingredient}', Language: '{request.language}'")
 
         prompt = f"""
@@ -161,10 +161,7 @@ async def get_ingredient_detail(
         """
         
         print("[DEBUG] 2. Sending prompt to Gemini...")
-        ai_response = await local_client.aio.models.generate_content(
-            model='gemini-3.6-flash',
-            contents=prompt
-        )
+        ai_response = await gemini.generate_content(contents=prompt, api_key=x_api_key)
 
         print("[DEBUG] 3. Gemini has replied!")
         print(f"[DEBUG] Raw AI Output:\n{ai_response.text.strip()}")

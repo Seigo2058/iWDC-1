@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { AllergenCardIcon } from "@/components/allergies/AllergenIcon";
 import { FixedBottomBar } from "@/components/ui/FixedBottomBar";
-import { ALLERGEN_ITEMS } from "@/lib/allergens/allergenList";
+import { ALLERGEN_CATEGORIES, itemsByCategory } from "@/lib/allergens/allergenList";
 import { useT } from "@/lib/i18n/useT";
 
 interface AllergySelectionFormProps {
@@ -20,10 +20,10 @@ interface AllergySelectionFormProps {
 const FADE = "from-[#f0f0f0] from-[73.6%] via-[rgba(240,240,240,0.59)] via-[87.4%] to-[rgba(240,240,240,0)]";
 
 /** Shared allergy-picker UI (allergy-selection.md 7; Figma: phone
- *  "Allergies" / PC "MacBook Pro 16' - 7"), used both as a capture flow step
- *  and as the standalone `/[lang]/allergies` edit page: a grid of allergen
- *  cards (red when selected) under a sticky title with Skip, and Back / Save
- *  fixed at the bottom. Storage and navigation are the caller's
+ *  "Allergies(3)" / PC "MacBook Pro 16' - 12"), used both as a capture flow
+ *  step and as the standalone `/[lang]/allergies` edit page: allergen cards
+ *  by category (red when selected) under a sticky title
+ *  with Skip, and Back / Save fixed at the bottom. Storage and navigation are the caller's
  *  responsibility via `onSave` / `onBack` / `onSkip`. */
 export function AllergySelectionForm({
   initialSelected,
@@ -50,7 +50,7 @@ export function AllergySelectionForm({
 
   return (
     <div className="flex flex-1 flex-col bg-[#f0f0f0] font-brand">
-      <div className={`sticky top-0 z-10 flex items-start justify-between gap-3 bg-linear-to-b px-5 pb-2.5 pt-10 md:px-gutter md:pb-9 md:pt-[93px] ${FADE}`}>
+      <div className={`sticky top-(--site-header-height) z-10 flex items-start justify-between gap-3 bg-linear-to-b px-5 pb-2.5 pt-10 md:px-gutter md:pb-9 md:pt-[93px] ${FADE}`}>
         <div className="min-w-0">
           <h1 className="text-xl leading-[31.2px] font-medium text-[#422f11] md:text-[30px] md:leading-[58.6px]">
             {t("allergies.heading")}
@@ -71,35 +71,54 @@ export function AllergySelectionForm({
         )}
       </div>
 
-      {/* Bottom padding keeps the last cards clear of the fixed buttons. */}
-      <ul className="grid grid-cols-2 gap-2 px-5 pb-[140px] md:grid-cols-4 md:gap-[12.6px] md:px-gutter md:pb-[200px]">
-        {ALLERGEN_ITEMS.map((item) => {
-          const isSelected = selected.has(item.id);
-          return (
-            <li key={item.id}>
-              <button
-                type="button"
-                onClick={() => toggle(item.id)}
-                aria-pressed={isSelected}
-                className={`flex w-full flex-col items-center justify-center rounded-[20px] py-5 transition-colors md:py-[31.5px] ${
-                  isSelected
-                    ? "bg-[#c82323] text-white"
-                    : "bg-white text-[#e98b00] hover:bg-[#fafafa]"
-                }`}
-              >
-                <AllergenCardIcon id={item.id} className="-mb-px size-[49px] md:size-[77px]" />
-                <span
-                  className={`text-base leading-[19.6px] font-medium tracking-[0.28px] md:text-[25.2px] md:leading-[30.9px] ${
-                    isSelected ? "text-white" : "text-[#564334]"
-                  }`}
-                >
-                  {t(`allergies.items.${item.id}`)}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      {/* Categories, each a heading over a two-column grid of cards: one
+          column of categories on phones and tablets, two from xl with a line
+          between them (Figma: "Allergies(3)" / "MacBook Pro 16' - 12").
+          Bottom padding keeps the last cards clear of the fixed buttons. */}
+      <div className="relative grid gap-6 px-5 pb-[140px] pt-[19px] md:gap-16 md:px-gutter md:pb-[200px] md:pt-[5px] xl:grid-cols-2 xl:gap-x-[11.6%]">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-[200px] left-1/2 top-[5px] hidden w-px bg-[#d4d4d4] xl:block"
+        />
+        {ALLERGEN_CATEGORIES.map((category) => (
+          <section key={category} aria-labelledby={`allergy-category-${category}`}>
+            <h2
+              id={`allergy-category-${category}`}
+              className="text-xl leading-[31.2px] font-medium text-[#422f11] md:text-[34.2px] md:leading-[53.3px]"
+            >
+              {t(`allergies.categories.${category}`)}
+            </h2>
+            <ul className="mt-2 grid grid-cols-2 gap-2 md:mt-[17px] md:gap-[13.7px]">
+              {itemsByCategory(category).map((item) => {
+                const isSelected = selected.has(item.id);
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => toggle(item.id)}
+                      aria-pressed={isSelected}
+                      className={`flex size-full flex-col items-center justify-center rounded-[20px] border px-2 py-[21px] transition-colors md:border-[1.7px] md:py-9 ${
+                        isSelected
+                          ? "border-[#c82323] bg-[#c82323] text-white"
+                          : "border-[rgba(86,67,52,0.16)] bg-white text-[#e98b00] hover:bg-[#fafafa]"
+                      }`}
+                    >
+                      <AllergenCardIcon id={item.id} className="-mb-px size-[49px] md:-mb-[1.7px] md:size-[84px]" />
+                      <span
+                        className={`text-center text-base leading-[19.6px] font-medium tracking-[0.28px] md:text-[27.3px] md:leading-[33.5px] ${
+                          isSelected ? "text-white" : "text-[#564334]"
+                        }`}
+                      >
+                        {t(`allergies.items.${item.id}`)}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))}
+      </div>
 
       <FixedBottomBar className="gap-[9px] pb-6 pt-11 md:gap-3 md:pb-10 md:pt-[66px]">
         <button

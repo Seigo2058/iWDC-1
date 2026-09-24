@@ -4,9 +4,8 @@ import { useEffect, useState } from "react";
 
 import {
   CaptureScreen,
+  CaptureTopBar,
   DecisionControls,
-  FrameMessage,
-  MessagePill,
 } from "@/components/capture/CaptureScreen";
 import { ProgressText } from "@/components/ui/ProgressText";
 import { runAnalysis } from "@/lib/capture/runAnalysis";
@@ -19,9 +18,9 @@ import { useCaptureStore } from "@/lib/store/useCaptureStore";
  *  PC "MacBook Pro 16' - 6"): the cropped image, small and centered in a
  *  grey frame; Back returns to cropping and the check mark sends it for
  *  analysis — by way of the allergy step the first time, which starts it
- *  and hands back here. "Analyzing..." shows here while it runs. On phones
- *  the screen is full-height without the site header, the hint above the
- *  frame. */
+ *  and hands back here. "Analyzing..." shows here while it runs, in the
+ *  pill above the frame. On phones the screen is full-height without the
+ *  site header. */
 export function ConfirmStep() {
   const t = useT();
 
@@ -114,9 +113,8 @@ export function ConfirmStep() {
 
   const isBusy = compressing || analyzing;
 
-  // One message pill: an error or progress takes the place of the hint. On
-  // phones it sits above the frame and always shows something; on PC it
-  // only appears for these, at the bottom of the frame.
+  // One message pill above the frame: an error or progress takes the place
+  // of the hint.
   const progressMessage =
     compressing ? (
       <ProgressText text={t("capture.confirming.compressing")} />
@@ -130,10 +128,10 @@ export function ConfirmStep() {
       heading={t("capture.confirming.heading")}
       className="bg-white md:bg-[#f0f0f0]"
       frameClassName="rounded-[32px] bg-[#e2e2e2] shadow-[0_0_12px_rgba(0,0,0,0.24)] md:rounded-[40px] md:border-4 md:border-[rgba(86,67,52,0.16)] md:shadow-[0_0_16px_rgba(0,0,0,0.24)]"
-      phoneTopBar={
-        <MessagePill alert={errorMessage !== null} className="mx-auto w-fit">
+      topBar={
+        <CaptureTopBar alert={errorMessage !== null}>
           {message ?? t("capture.confirming.hint")}
-        </MessagePill>
+        </CaptureTopBar>
       }
       frame={
         <>
@@ -148,11 +146,6 @@ export function ConfirmStep() {
                 className="max-h-full max-w-full rounded-lg"
               />
             </div>
-          )}
-          {message && (
-            <FrameMessage alert={errorMessage !== null} only="pc">
-              {message}
-            </FrameMessage>
           )}
         </>
       }

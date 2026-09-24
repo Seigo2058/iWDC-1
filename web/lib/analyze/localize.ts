@@ -51,3 +51,48 @@ function localizedList(
   const localized = list[toApiLang(lang)];
   return localized.length > 0 ? localized : list.en;
 }
+
+export type AudienceGroup = "adult" | "child";
+
+/** The groups the database's audience value covers ("Both" is adults and
+ *  children), each shown as its own pill; null for a value the app doesn't
+ *  know (shown as is). */
+export function audienceGroups(audience: string): AudienceGroup[] | null {
+  switch (audience.trim().toLowerCase()) {
+    case "adult":
+    case "adults":
+      return ["adult"];
+    case "both":
+      return ["adult", "child"];
+    case "child":
+    case "children":
+    case "kids":
+      return ["child"];
+    default:
+      return null;
+  }
+}
+
+// The database names countries in English; these are the ones it uses (and
+// neighbors likely to follow), by ISO region code for Intl.DisplayNames.
+const COUNTRY_CODES: Record<string, string> = {
+  thailand: "TH",
+  japan: "JP",
+  china: "CN",
+  korea: "KR",
+  "south korea": "KR",
+  vietnam: "VN",
+  india: "IN",
+  indonesia: "ID",
+  malaysia: "MY",
+  singapore: "SG",
+  philippines: "PH",
+};
+
+/** The country in the display language ("Thailand" -> "タイ" / "ไทย"),
+ *  or as stored when it isn't one of the known names. */
+export function countryName(country: string, lang: Locale): string {
+  const code = COUNTRY_CODES[country.trim().toLowerCase()];
+  if (!code) return country;
+  return new Intl.DisplayNames(lang, { type: "region" }).of(code) ?? country;
+}

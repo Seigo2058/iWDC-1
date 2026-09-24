@@ -95,10 +95,12 @@ const response = await fetch("/api/analyze-food", {
         "jp": ["エビ", "レモングラス", "..."]
       },
       "spicy_level": "Very Spicy",
-      "calories": 220,
-      "protein": 24,
-      "carbs": 12,
-      "fat": 8,
+      "audience": "Both",
+      "country": "Thailand",
+      "calories": "350 - 450",
+      "protein": "10 - 15",
+      "carbs": "50 - 60",
+      "fat": "15 - 20",
       "how_to_eat": { "en": "...", "th": "...", "jp": "..." },
       "source_url": "https://en.wikipedia.org/wiki/Tom_yum",
       "image_url": ""
@@ -118,10 +120,12 @@ const response = await fetch("/api/analyze-food", {
 | `data.description` | `{en, th, jp}` | 3言語での料理の説明 |
 | `data.ingredients` | `{en, th, jp}`（各言語の文字列配列） | 主な材料。旧仕様の英語のみの配列が返ってきても表示できるよう、フロントは両方の形に対応している |
 | `data.spicy_level` | Very Spicy | 辛さレベル。**`No Spicy` / `Low Spicy` / `Medium Spicy` / `Very Spicy` の4種類**。表示用の3言語ラベルはフロント側で用意する |
-| `data.calories` | 220 | カロリー（kcal、一食分の目安）。DBカラム `calories_kcal` を API が変換して返す |
-| `data.protein` | 24 | タンパク質量（g、一食分の目安）。DBカラム `protein_g` |
-| `data.carbs` | 12 | 炭水化物量（g、一食分の目安）。DBカラム `carbohydrate_g` |
-| `data.fat` | 8 | 脂質量（g、一食分の目安）。DBカラム `fat_g` |
+| `data.audience` | Both | 向いている人。DBの値は `Adult`（大人）/ `Both`（大人・子ども）。料理情報の「Suitable for」に、対象ごとのグレーのラベル（「大人」「子ども」。`Both` は両方）で表示し、未知の値はそのまま表示する |
+| `data.country` | Thailand | 料理の国（英語名。DBの値は `Thailand` / `Japan`）。料理情報の「COUNTRY（国）」に表示言語の国名（`Intl.DisplayNames`）で表示する |
+| `data.calories` | "350 - 450" | カロリー（kcal、一食分の目安）。DBカラム `calories_kcal`（TEXT）。**幅のある値を文字列で返す**。フロントは「350–450」の形に整えて表示し、数値が返ってきても表示できる |
+| `data.protein` | "10 - 15" | タンパク質量（g、一食分の目安）。DBカラム `protein_g`（TEXT、`calories` と同じ形式） |
+| `data.carbs` | "50 - 60" | 炭水化物量（g、一食分の目安）。DBカラム `carbohydrate_g`（TEXT、`calories` と同じ形式） |
+| `data.fat` | "15 - 20" | 脂質量（g、一食分の目安）。DBカラム `fat_g`（TEXT、`calories` と同じ形式） |
 | `data.how_to_eat` | `{en, th, jp}` | 3言語での料理の食べ方 |
 | `data.source_url` | https://... | 料理情報の出典URL（英語のソースのみ） |
 | `data.image_url` | （空文字の場合あり） | 料理の参考画像URL。料理データカードの「参考写真」と、料理一覧のサムネイルに使う |
@@ -167,8 +171,8 @@ Gemini が空配列を返した場合は `data` を含まずに返す。フロ�
 | --- | --- | --- | --- |
 | 400 | backend | アップロードされたファイルが画像ではない | 解析失敗メッセージ |
 | 422 | backend | body に `file` が含まれていない | 解析失敗メッセージ |
-| 429 | backend | 設定したすべての Gemini モデルが利用枠（リクエスト上限）に達している（7.1.1） | 解析失敗メッセージ |
-| 503 | backend | 使えるモデルがすべて混雑・応答なし（一部が利用枠超過の場合を含む）（7.1.1） | 解析失敗メッセージ |
+| 429 | backend | 設定したすべての Gemini モデルが利用枠（リクエスト上限）に達している（7.1.1） | 利用上限メッセージ「AIの本日の利用上限に達しました。時間をおいてお試しください。」 |
+| 503 | backend | 使えるモデルがすべて混雑・応答なし（一部が利用枠超過の場合を含む）（7.1.1） | 混雑メッセージ「AIが混み合っています。少し時間をおいてもう一度お試しください。」 |
 | 500 | backend | Gemini の処理失敗、またはDBエラー | 解析失敗メッセージ |
 | 500 | Next.js | backend が起動していない／到達できない（中継に失敗） | 解析失敗メッセージ |
 | 404 | Next.js / backend | `AI_API_ORIGIN` が未設定、または転送先に `/api/analyze-food` が無い | 設定エラーメッセージ |
@@ -239,7 +243,7 @@ Gemini の無料枠はモデルごとにリクエスト数が制限されてい�
 | 思考レベル | Gemini 3 は応答時間の大半が「思考」なので、`MINIMAL` を指定する（`gemini-3.6-flash` の画像解析で 8.5秒 → 1.9秒）。対応していないモデル（`gemini-3.8-flash` は `MINIMAL` を400で拒否）は同じモデルで `LOW`、それも拒否されたら既定の設定で送り直し、使えたレベルをモデルごとに覚える |
 | 404（提供終了） | 次のモデルへ。backend を再起動するまで使わない |
 | その他のエラー | 切り替えずにそのままエラーにする（500） |
-| すべて使えない場合 | すべて利用枠超過なら **429**、混雑・応答なしを含むなら **503** を返す（3.5）。フロントは現状どちらも「解析失敗」と同じ表示 |
+| すべて使えない場合 | すべて利用枠超過なら **429**、混雑・応答なしを含むなら **503** を返す（3.5）。フロントは 503 を「混み合っています」、429 を「本日の利用上限」として、解析失敗とは別のメッセージで表示する |
 | 状態の保持 | backend のメモリ上のみ（使えないモデル・待機時間・使える思考レベル）。再起動するとリセットされ、先頭のモデルから試し直す |
 
 2026-09-13 に確認した各モデルの状況:

@@ -25,6 +25,9 @@ const GLYPH_INSETS: Record<string, { outer: string; inner: string }> = {
   mushroom: { outer: "19.52% 12.95% 18.63% 12.87%", inner: "-3.37% -2.81%" },
   gluten: { outer: "12.5%", inner: "-2.78%" },
   gelatin: { outer: "12.5% 11.28% 16.67% 11.28%", inner: "-3.59% -2.69% -2.94% -2.69%" },
+  // Only drawn at card size in Figma; the same glyphs, grayed like the rest.
+  pork: { outer: "5.81% 4.08% -2.53% -0.8%", inner: "0" },
+  alcohol: { outer: "12.5% 14.8% 9.86% 12.5%", inner: "-2.63% -2.81%" },
 };
 
 /** The same for the bigger, finer-stroked glyphs of the allergy selection
@@ -49,6 +52,8 @@ const CARD_GLYPH_INSETS: Record<string, { outer: string; inner: string }> = {
   mushroom: { outer: "13.08% 20.66% 14.27% 17.47%", inner: "-2.81% -3.3%" },
   gluten: { outer: "13.44% 13.44% 14.44% 14.44%", inner: "-2.83% -2.83% -2% -2%" },
   gelatin: { outer: "12.5% 11.28% 16.67% 11.28%", inner: "-3.51% -2.64% -2.88% -2.64%" },
+  pork: { outer: "5.81% 4.08% -2.53% -0.8%", inner: "0" },
+  alcohol: { outer: "12.5% 14.8% 9.86% 12.5%", inner: "-2.63% -2.81%" },
 };
 
 export function hasAllergenIcon(id: string): boolean {

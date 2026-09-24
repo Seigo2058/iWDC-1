@@ -9,10 +9,11 @@ import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { useT } from "@/lib/i18n/useT";
 import { useCaptureStore } from "@/lib/store/useCaptureStore";
 
-/** Orange navigation bar on every screen (Figma: Navigation Bar): mascot
- *  linking home on the left, the ALLERQUAL wordmark centered, language menu
- *  on the right. A client component because the language can change in
- *  place (LanguageSwitcher), and the home link must follow it. */
+/** Orange navigation bar on every screen, pinned to the top while the page
+ *  scrolls (Figma: Navigation Bar): the logo linking home on the left, the
+ *  ALLERQUAL logotype centered, language menu on the right. A client
+ *  component because the language can change in place (LanguageSwitcher),
+ *  and the home link must follow it. */
 export function SiteHeader() {
   const t = useT();
   const lang = useLang();
@@ -21,41 +22,43 @@ export function SiteHeader() {
 
   // The capture flow's screens before the allergy step and result (camera,
   // photo check, crop, final confirmation) are full height on phones with
-  // their own top row (CaptureScreen's phoneTopBar) and a way back, so the
+  // their own top row (CaptureScreen's topBar) and a way back, so the
   // bar steps aside there.
   const isFullScreenOnPhone =
     pathname === `/${lang}/capture` &&
     (step === "capture" || step === "review" || step === "crop" || step === "confirm");
 
   return (
-    <header className={`bg-[#e98b00] px-gutter ${isFullScreenOnPhone ? "max-md:hidden" : ""}`}>
+    // Sticky rather than fixed: it keeps its place in the layout, so pages
+    // need no top padding for it (and those sized as "the viewport minus
+    // the header" stay right). Above FixedBottomBar and page content.
+    <header
+      className={`sticky top-0 z-30 bg-[#e98b00] px-gutter ${isFullScreenOnPhone ? "max-md:hidden" : ""}`}
+    >
       <div className="relative flex h-(--site-header-height) items-center justify-between">
         <Link href={`/${lang}`} aria-label={t("nav.home")} className="shrink-0">
           <Image
-            src="/images/brand/logo.svg"
+            src="/images/header/logo.png"
             alt=""
-            width={81}
-            height={76}
+            width={303}
+            height={312}
             preload
-            className="h-[47px] w-[50px] md:h-[76px] md:w-[81px]"
+            sizes="(min-width: 48rem) 74px, 46px"
+            className="h-[47px] w-auto md:h-[76px]"
           />
         </Link>
 
         <div className="pointer-events-none absolute left-1/2 -translate-x-1/2">
+          {/* White lettering with a check mark above it; as wide as the
+              previous wordmark, so the lettering keeps about its size. */}
           <Image
-            src="/images/brand/wordmark-sm.svg"
+            src="/images/header/logotype.png"
             alt="ALLERQUAL"
-            width={151}
-            height={20}
+            width={1077}
+            height={268}
             preload
-            className="h-5 w-[151px] md:hidden"
-          />
-          <Image
-            src="/images/brand/wordmark-lg.svg"
-            alt="ALLERQUAL"
-            width={224}
-            height={34}
-            className="hidden h-[34px] w-[224px] md:block"
+            sizes="(min-width: 48rem) 224px, 151px"
+            className="h-auto w-[151px] md:w-[224px]"
           />
         </div>
 
