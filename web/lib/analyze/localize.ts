@@ -40,6 +40,21 @@ export function foodName(food: FoodData, lang: Locale): string {
   }
 }
 
+/** The dish's name in its own country's language ("ส้มตำ" for a Thai dish,
+ *  "ラーメン" for a Japanese one), for ordering it by name where it's from;
+ *  null for countries whose language the database has no name in. A dish
+ *  without a country is taken as Thai, the cuisine the database covers. */
+export function localFoodName(food: FoodData): string | null {
+  switch (food.country?.trim().toLowerCase() ?? "thailand") {
+    case "thailand":
+      return food.nameTh;
+    case "japan":
+      return food.nameJp;
+    default:
+      return null;
+  }
+}
+
 export function foodIngredients(food: FoodData, lang: Locale): string[] {
   return localizedList(food.ingredients, lang);
 }

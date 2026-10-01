@@ -20,6 +20,7 @@ import {
   countryName,
   foodIngredients,
   foodName,
+  localFoodName,
   localizedText,
   spicyLevelKey,
 } from "@/lib/analyze/localize";
@@ -123,11 +124,13 @@ export function FoodDetail({ food, capturedPhotoUrl, onBack }: FoodDetailProps) 
   };
 
   const name = foodName(food, lang);
-  // The Thai name alongside, as on the design ("Som Tum (ส้มตำ)"), for
-  // ordering by name; skipped when it is only the English fallback.
-  const thaiName =
-    lang !== "th" && food.nameTh !== food.nameEn && food.nameTh !== name
-      ? food.nameTh
+  // The name in the dish's own language alongside, as on the design
+  // ("Som Tum (ส้มตำ)"), for ordering by name; skipped when it is what's
+  // already shown or only the English fallback.
+  const localName = localFoodName(food);
+  const shownLocalName =
+    localName && localName !== food.nameEn && localName !== name
+      ? localName
       : null;
   const description = localizedText(food.description, lang);
   const howToEat = localizedText(food.howToEat, lang);
@@ -175,7 +178,7 @@ export function FoodDetail({ food, capturedPhotoUrl, onBack }: FoodDetailProps) 
           <div className={FOOD_DETAIL_LAYOUT.photoText}>
             <h1 className={FOOD_DETAIL_LAYOUT.name}>
               {name}
-              {thaiName && ` (${thaiName})`}
+              {shownLocalName && ` (${shownLocalName})`}
             </h1>
             {description && (
               <p className="mt-1.5 text-sm leading-5 tracking-[-0.28px] text-[#6a6a6a] md:mt-4 md:max-w-[456px] md:text-2xl md:leading-8 md:tracking-[-0.48px]">
