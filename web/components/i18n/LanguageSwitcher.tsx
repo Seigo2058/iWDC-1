@@ -6,7 +6,7 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { useLang } from "@/components/i18n/I18nProvider";
 import { useT } from "@/lib/i18n/useT";
-import { SUPPORTED_LOCALES, type Locale } from "@/lib/locales";
+import { SUPPORTED_LOCALES, pathInLocale, type Locale } from "@/lib/locales";
 
 // Each language's own name in its own script, not translated — the point of
 // a language switcher is that a reader who can't read the current locale
@@ -24,13 +24,6 @@ const DISPLAY_CODES: Record<Locale, string> = {
   ja: "JP",
   th: "TH",
 };
-
-/** Same page in another language: only the leading `/[lang]` segment of
- *  the path changes (e.g. /ja/foods/5 -> /th/foods/5). */
-function pathInLocale(pathname: string, locale: Locale): string {
-  const rest = pathname.split("/").slice(2).join("/");
-  return rest ? `/${locale}/${rest}` : `/${locale}`;
-}
 
 /** "🌐 EN ▾" menu of the navigation bar (Figma: Navigation Bar). */
 export function LanguageSwitcher() {

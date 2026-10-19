@@ -21,3 +21,10 @@ export function localeFromAcceptLanguage(acceptLanguage: string | null): Locale 
 
   return DEFAULT_LOCALE;
 }
+
+/** Same page in another language: only the leading `/[lang]` segment of
+ *  the path changes (e.g. /ja/foods/5 -> /th/foods/5). */
+export function pathInLocale(pathname: string, locale: Locale): string {
+  const rest = pathname.split("/").slice(2).join("/");
+  return rest ? `/${locale}/${rest}` : `/${locale}`;
+}
