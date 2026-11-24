@@ -30,3 +30,6 @@ class FoodItem(Base):
     
     # We use 'item_metadata' because 'metadata' is a reserved word in SQLAlchemy
     item_metadata = Column(Text)
+    food_story = Column(Text)
+    ingredient_details = Column(Text)
+    not_for_kids_reason = Column(Text)

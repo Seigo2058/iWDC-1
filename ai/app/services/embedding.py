@@ -1,5 +1,17 @@
 """Text chunking and embedding generation."""
 
+import os
+from dotenv import load_dotenv
+import google.generativeai as genai
+
+load_dotenv()
+
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_EMBED_MODEL = os.environ.get("GEMINI_EMBED_MODEL", "models/text-embedding-004")
+
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+
 
 def split_text(text: str, chunk_size: int = 800, overlap: int = 100) -> list[str]:
     """Split text into fixed-size chunks with overlap."""
@@ -15,10 +27,21 @@ def split_text(text: str, chunk_size: int = 800, overlap: int = 100) -> list[str
 
 
 def embed(texts: list[str]) -> list[list[float]]:
-    """Turn chunks into embedding vectors.
+    """Turn chunks into embedding vectors using Gemini Embedding API."""
+    if not GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY is not set in environment variables.")
 
-    Not implemented: pick an embedding model (sentence-transformers / OpenAI / Voyage)
-    before filling this in. If Chroma's built-in embedding function is used instead,
-    this function can be dropped entirely.
-    """
-    raise NotImplementedError("No embedding model has been chosen yet (app/services/embedding.py)")
+    embeddings: list[list[float]] = []
+
+    for text in texts:
+        try:
+            result = genai.embed_content(
+                model=GEMINI_EMBED_MODEL,
+                content=text,
+            )
+            embeddings.append(result["embedding"])
+        except Exception as e:
+            print(f"[DEBUG ERROR] Gemini Embedding failed for chunk: {str(e)}")
+            raise e
+
+    return embeddings
