@@ -8,6 +8,9 @@ from sqlalchemy import func
 from google.genai import types
 from dotenv import load_dotenv
 from pydantic import BaseModel
+import uuid
+from app.services.embedding import split_text, embed
+from app.db.chroma import get_collection
 
 load_dotenv()
 
@@ -15,9 +18,14 @@ class IngredientRequest(BaseModel):
     ingredient: str
     language: str
 
+class ChatRequest(BaseModel):
+    message: str
+
 from app.db.postgres import get_session
 from app.db.models import FoodItem
 from app.services import gemini
+
+from app.services.rag import retrieve, generate_answer
 
 router = APIRouter()
 
@@ -182,3 +190,75 @@ async def get_ingredient_detail(
     except Exception as e:
         print(f"\n[DEBUG ERROR] get_ingredient_detail failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"AI Processing Error: {str(e)}")
+
+# ==========================================
+#  Endpoint For Chatbot RAG
+# ==========================================
+
+@router.post("/chat")
+async def chat_with_ai(request: ChatRequest):
+    try:
+        print(f"\n[DEBUG] 1. Chat request received: {request.message}")
+        
+        hits = await retrieve(request.message)
+        print(f"[DEBUG] 2. Retrieved {len(hits)} context chunks from database.")
+        
+        reply = await generate_answer(request.message, hits)
+        print("[DEBUG] 3. AI Generated reply successfully.")
+        
+        return {"status": "success", "reply": reply}
+        
+    except Exception as e:
+        print(f"\n[DEBUG ERROR] chat endpoint failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Chat Error: {str(e)}")
+
+# ==========================================
+# Endpoint for Data Ingestion 
+# ==========================================
+@router.post("/ingest-data")
+async def ingest_food_data(db: AsyncSession = Depends(get_session)):
+    try:
+        print("\n[DEBUG] 1. Fetching data from Supabase...")
+        result = await db.execute(select(FoodItem))
+        food_items = result.scalars().all()
+
+        if not food_items:
+            return {"message": "No food items found in database."}
+
+        collection = get_collection()
+        total_chunks_added = 0
+        
+        print(f"[DEBUG] 2. Found {len(food_items)} items. Starting embedding process...")
+        for item in food_items:
+            if not item.food_story:
+                continue
+                
+            full_text = f"Dish Name: {item.name_en} ({item.name_th})\n"
+            full_text += f"Story: {item.food_story}\n"
+            full_text += f"Ingredients: {item.ingredient_details}\n"
+            full_text += f"For Kids/Allergens: {item.not_for_kids_reason}"
+            
+            chunks = split_text(full_text, chunk_size=800, overlap=100)
+            
+            vectors = embed(chunks)
+            
+            ids = [str(uuid.uuid4()) for _ in chunks]
+            metadatas = [{"document_id": str(item.food_id), "name": item.name_en} for _ in chunks]
+            
+            collection.add(
+                ids=ids,
+                embeddings=vectors,
+                documents=chunks,
+                metadatas=metadatas
+            )
+            total_chunks_added += len(chunks)
+            print(f"  -> Ingested {item.name_en} ({len(chunks)} chunks)")
+            
+        return {
+            "status": "success", 
+            "message": f"Successfully ingested {len(food_items)} items into {total_chunks_added} vector chunks."
+        }
+
+    except Exception as e:
+        print(f"\n[DEBUG ERROR] Ingestion failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ingestion Error: {str(e)}")
