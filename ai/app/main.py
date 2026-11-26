@@ -1,8 +1,29 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import food  # Import the new router file
+from app.routers import food
+from app.db.chroma import get_collection
+from app.db.postgres import async_sessionmaker
 
-app = FastAPI(title="Point & Know AI Backend")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        collection = get_collection()
+        current_count = collection.count()
+        
+        if current_count == 0:
+            print("[STARTUP] ChromaDB is empty. Auto-ingesting data from Supabase...")
+            async with async_sessionmaker() as db:
+                res = await food.ingest_food_data(db=db)
+                print(f"[STARTUP] {res.get('message', 'Auto-ingest completed!')}")
+        else:
+            print(f"[STARTUP] ChromaDB already has {current_count} chunks. Ready!")
+    except Exception as e:
+        print(f"[STARTUP ERROR] Failed to auto-ingest data: {e}")
+
+    yield
+
+app = FastAPI(title="Point & Know AI Backend", lifespan=lifespan)
 
 # unlock CORS 
 app.add_middleware(

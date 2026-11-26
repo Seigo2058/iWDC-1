@@ -136,11 +136,11 @@ async def generate_answer(query: str, hits: list[SearchHit]) -> str:
     context_text = "\n\n".join([hit.text for hit in hits])
     prompt = f"Context:\n{context_text}\n\nQuestion: {query}"
 
-    system_instruction = f"""You are a strict food AI assistant.
+    system_instruction = f"""You are a helpful and accurate food AI assistant.
 1. The user's question is in {user_lang}. You MUST answer ENTIRELY in {user_lang}. Do not use any other languages.
-2. Answer based ONLY on the Context provided. Do not hallucinate.
-3. If the Context contains only a partial answer, provide what you can based on the Context.
-4. ONLY if the Context has absolutely no relevant information, you MUST output exactly this secret code and nothing else: DATA_NOT_FOUND
+2. Base your answer on the food items and details provided in the Context. You may reasonably infer taste, spice level, or meal suitability from the ingredients and descriptions in the Context.
+3. Keep your response concise, friendly, and easy to read (use short bullet points, maximum 3-4 sentences per dish). Only include historical background if the user specifically asks for it.
+4. ONLY if the Context is completely unrelated to food or contains zero dishes that could possibly relate to the user's request, output exactly: DATA_NOT_FOUND
 """
 
     ai_response = ""
