@@ -126,10 +126,15 @@ def get_fallback_message(user_lang: str) -> str:
 
 async def generate_answer(query: str, hits: list[SearchHit]) -> str:
     """Generate an answer using the retrieved chunks (Local AI first, Gemini fallback)."""
+    user_lang = detect_language(query)
+    print(f"[DEBUG] generate_answer received {len(hits)} chunks.")
+
+    if not hits:
+        print("[DEBUG] No chunks found in ChromaDB!")
+        return get_fallback_message(user_lang)
+
     context_text = "\n\n".join([hit.text for hit in hits])
     prompt = f"Context:\n{context_text}\n\nQuestion: {query}"
-
-    user_lang = detect_language(query)
 
     system_instruction = f"""You are a strict food AI assistant.
 1. The user's question is in {user_lang}. You MUST answer ENTIRELY in {user_lang}. Do not use any other languages.
@@ -139,17 +144,18 @@ async def generate_answer(query: str, hits: list[SearchHit]) -> str:
 """
 
     ai_response = ""
-    used_provider = "Gemini API (Auto-Model)"
+    used_provider = ""
 
     try:
-        ai_response = _call_ollama(prompt=prompt, system=system_instruction, timeout=45.0)  # เอา await ออก
+        ai_response = _call_ollama(prompt=prompt, system=system_instruction, timeout=45.0)
         used_provider = f"Local AI ({OLLAMA_BASE_URL})"
     except Exception as ollama_err:
         print(f"[DEBUG] Local AI failed ({OLLAMA_BASE_URL}): {ollama_err}")
         print("[DEBUG] Switching automatically to Gemini API...")
 
+        # A living hell: automatically calling the Gemini API.
         try:
-            ai_response = await _call_gemini(prompt=prompt, system=system_instruction)  # เติม await ตรงนี้
+            ai_response = await _call_gemini(prompt=prompt, system=system_instruction)
             used_provider = "Gemini API (Auto-Model)"
         except Exception as gemini_err:
             return f"Error: Both Local AI ({ollama_err}) and Gemini API ({gemini_err}) failed."
