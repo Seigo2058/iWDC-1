@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import food
 from app.db.chroma import get_collection
-from app.db.postgres import async_sessionmaker
+from app.db.postgres import get_session
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -16,6 +16,7 @@ async def lifespan(app: FastAPI):
             async for db in get_session():
                 res = await food.ingest_food_data(db=db)
                 print(f"[STARTUP] {res.get('message', 'Auto-ingest completed!')}")
+                break
         else:
             print(f"[STARTUP] ChromaDB already has {current_count} chunks. Ready!")
     except Exception as e:
@@ -37,6 +38,6 @@ app.add_middleware(
 # Include the router
 app.include_router(food.router, prefix="/api", tags=["Food Analysis"])
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 async def root():
     return {"message": "API is running"}
