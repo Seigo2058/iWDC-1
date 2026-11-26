@@ -13,7 +13,7 @@ async def lifespan(app: FastAPI):
         
         if current_count == 0:
             print("[STARTUP] ChromaDB is empty. Auto-ingesting data from Supabase...")
-            async with async_sessionmaker() as db:
+            async for db in get_session():
                 res = await food.ingest_food_data(db=db)
                 print(f"[STARTUP] {res.get('message', 'Auto-ingest completed!')}")
         else:
